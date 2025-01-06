@@ -42,14 +42,14 @@ class MultiplierMachine extends PositionComponent {
     add(_label);
   }
 
-  void receiveNumber(int number) {
-    _inputs.add(number);
-    if (_inputs.length == 2) {
-      final result = operation
-          .execute(_inputs[0].toDouble(), _inputs[1].toDouble())
-          .toInt();
-      onResult?.call(result);
-      _inputs.clear();
-    }
-  }
+  // void receiveNumber(int number) {
+  //   _inputs.add(number);
+  //   if (_inputs.length == 2) {
+  //     final result = operation
+  //         .execute(_inputs[0].toDouble(), _inputs[1].toDouble())
+  //         .toInt();
+  //     onResult?.call(result);
+  //     _inputs.clear();
+  //   }
+  // }
 }

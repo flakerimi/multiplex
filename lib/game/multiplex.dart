@@ -1,140 +1,164 @@
-import 'package:flame/game.dart';
-import 'package:flame/components.dart';
+import 'package:flame/camera.dart';
 import 'package:flame/events.dart';
+import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
-import 'components/operation_tile.dart';
-import 'components/number_tile.dart';
-import 'models/operation.dart';
+import 'package:flutter/services.dart';
 
-class Multiplex extends FlameGame with DragCallbacks {
-  static const int gridSize = 15;
-  static const double tileSize = 64.0;
-  
-  final List<List<Component?>> grid = List.generate(
-    gridSize,
-    (_) => List.filled(gridSize, null),
-  );
-  
-  List<NumberTile> chainedTiles = [];
-  Operation? selectedOperation;
-  double score = 0;
-  int targetNumber = 3;
-  
-  @override
-  Color backgroundColor() => const Color(0xFF90EE90);
+class Multiplex extends FlameGame
+    with PanDetector, ScrollDetector, TapDetector, KeyboardEvents {
+  static const double baseTileSize = 64.0; // Base tile size
+  double tileSize = baseTileSize; // Current tile size for the grid
+  Vector2 gridOffset = Vector2.zero(); // Track the grid's position
+
+  final Set<LogicalKeyboardKey> pressedKeys = {}; // Track pressed keys
 
   @override
   Future<void> onLoad() async {
-    camera.viewfinder.zoom = 1.0;
-    
-    // Add operations panel
-    final operations = [
-      Operation.add,
-      Operation.subtract,
-      Operation.multiply,
-      Operation.divide,
-    ];
-    
-    for (var i = 0; i < operations.length; i++) {
-      final op = OperationTile(
-        operation: operations[i],
-        position: Vector2(
-          gridSize * tileSize + 20,
-          20 + i * (tileSize + 10),
-        ),
-      );
-      add(op);
+    camera.viewfinder.zoom = 1.0; // Default zoom level
+  }
+
+  @override
+  void onGameResize(Vector2 canvasSize) {
+    // Dynamically set the viewport size to always match the widget size
+    camera.viewport = FixedResolutionViewport(resolution: canvasSize);
+    super.onGameResize(canvasSize);
+  }
+
+  @override
+  Color backgroundColor() => const Color(0xFF90EE90).withOpacity(0.5);
+
+  @override
+  void render(Canvas canvas) {
+    super.render(canvas);
+    _drawInfiniteGrid(canvas);
+    _drawCellCoordinates(canvas);
+    _drawViewportBorder(canvas);
+  }
+
+  void _drawInfiniteGrid(Canvas canvas) {
+    final paint = Paint()
+      ..color = Colors.black.withOpacity(0.2)
+      ..strokeWidth = 1.0;
+
+    final Rect visibleRect = camera.viewport.size.toRect();
+    final double startX =
+        (visibleRect.left + gridOffset.x) ~/ tileSize * tileSize;
+    final double startY =
+        (visibleRect.top + gridOffset.y) ~/ tileSize * tileSize;
+    final double endX =
+        (visibleRect.right + gridOffset.x) ~/ tileSize * tileSize + tileSize;
+    final double endY =
+        (visibleRect.bottom + gridOffset.y) ~/ tileSize * tileSize + tileSize;
+
+    // Draw vertical grid lines
+    for (double x = startX; x <= endX; x += tileSize) {
+      canvas.drawLine(Offset(x - gridOffset.x, 0),
+          Offset(x - gridOffset.x, visibleRect.bottom), paint);
     }
-    
-    // Add initial number tiles
-    _addNumberTile(1, Vector2(1, 1));
-    _addNumberTile(1, Vector2(2, 1));
-    _addNumberTile(1, Vector2(3, 1));
-    _addNumberTile(2, Vector2(1, 3));
-    _addNumberTile(2, Vector2(2, 3));
-    
-    // Add target display
-    add(
-      TextComponent(
-        text: 'Target: $targetNumber',
-        position: Vector2(gridSize * tileSize + 20, gridSize * tileSize - 100),
-        textRenderer: TextPaint(
-          style: const TextStyle(
-            color: Color(0xFF663399),
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+
+    // Draw horizontal grid lines
+    for (double y = startY; y <= endY; y += tileSize) {
+      canvas.drawLine(Offset(0, y - gridOffset.y),
+          Offset(visibleRect.right, y - gridOffset.y), paint);
+    }
+  }
+
+  void _drawCellCoordinates(Canvas canvas) {
+    final Rect visibleRect = camera.viewport.size.toRect();
+    final textPaint = TextPaint(
+      style: const TextStyle(
+        color: Colors.black,
+        fontSize: 12,
+        fontWeight: FontWeight.bold,
       ),
     );
-  }
 
-  void _addNumberTile(int value, Vector2 gridPos) {
-    final tile = NumberTile(
-      value: value,
-      position: gridPos * tileSize,
-    );
-    grid[gridPos.y.toInt()][gridPos.x.toInt()] = tile;
-    add(tile);
-  }
+    final double startX =
+        (visibleRect.left + gridOffset.x) ~/ tileSize * tileSize;
+    final double startY =
+        (visibleRect.top + gridOffset.y) ~/ tileSize * tileSize;
+    final double endX =
+        (visibleRect.right + gridOffset.x) ~/ tileSize * tileSize + tileSize;
+    final double endY =
+        (visibleRect.bottom + gridOffset.y) ~/ tileSize * tileSize + tileSize;
 
-  @override
-  void onDragStart(DragStartEvent event) {
-    super.onDragStart(event);
-    
-    final gridPos = Vector2(
-      (event.canvasPosition.x / tileSize).floor().toDouble(),
-      (event.canvasPosition.y / tileSize).floor().toDouble()
-    );
-    
-    final component = grid[gridPos.y.toInt()][gridPos.x.toInt()];
-    
-    if (component is NumberTile) {
-      chainedTiles = [component];
-      component.chain();
-    }
-  }
-
-  @override
-  void onDragUpdate(DragUpdateEvent event) {
-    super.onDragUpdate(event);
-    
-    if (chainedTiles.isEmpty) return;
-    
-    final gridPos = Vector2(
-      (event.canvasPosition.x / tileSize).floor().toDouble(),
-      (event.canvasPosition.y / tileSize).floor().toDouble()
-    );
-    
-    final component = grid[gridPos.y.toInt()][gridPos.x.toInt()];
-    
-    if (component is NumberTile && 
-        component.value == chainedTiles.first.value &&
-        !chainedTiles.contains(component)) {
-      // Check if the new tile is adjacent to the last chained tile
-      final lastTile = chainedTiles.last;
-      final lastPos = Vector2(
-        lastTile.position.x / tileSize,
-        lastTile.position.y / tileSize
-      );
-      final dx = (gridPos.x - lastPos.x).abs();
-      final dy = (gridPos.y - lastPos.y).abs();
-      
-      if ((dx == 1 && dy == 0) || (dx == 0 && dy == 1)) {
-        chainedTiles.add(component);
-        component.chain();
+    for (double x = startX; x <= endX; x += tileSize) {
+      for (double y = startY; y <= endY; y += tileSize) {
+        final gridX = (x / tileSize).floor();
+        final gridY = (y / tileSize).floor();
+        textPaint.render(
+          canvas,
+          '($gridX, $gridY)',
+          Vector2(x - gridOffset.x + 5,
+              y - gridOffset.y + 5), // Offset text slightly within the cell
+        );
       }
     }
   }
 
+  void _drawViewportBorder(Canvas canvas) {
+    final Paint borderPaint = Paint()
+      ..color = Colors.red
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.0;
+
+    final Rect visibleRect = camera.viewport.size.toRect();
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, visibleRect.width, visibleRect.height),
+      borderPaint,
+    );
+  }
+
   @override
-  void onDragEnd(DragEndEvent event) {
-    super.onDragEnd(event);
-    
-    // Unchain all tiles
-    for (final tile in chainedTiles) {
-      tile.unchain();
+  KeyEventResult onKeyEvent(
+      KeyEvent event, Set<LogicalKeyboardKey> keysPressed) {
+    if (event is KeyDownEvent) {
+      pressedKeys.add(event.logicalKey);
+    } else if (event is KeyUpEvent) {
+      pressedKeys.remove(event.logicalKey);
     }
-    chainedTiles.clear();
+    return KeyEventResult.handled; // Indicate that the event was handled
+  }
+
+  @override
+  void onPanUpdate(DragUpdateInfo info) {
+    // Check for Shift (either left or right) for zooming
+    if (pressedKeys.contains(LogicalKeyboardKey.shiftLeft) ||
+        pressedKeys.contains(LogicalKeyboardKey.shiftRight)) {
+      // Zooming with Shift + Drag
+      final delta = info.delta.global;
+      if (delta.y > 0) {
+        _updateTileSize(-0.01); // Zoom out
+      } else if (delta.y < 0) {
+        _updateTileSize(0.01); // Zoom in
+      }
+    } else if (pressedKeys.contains(LogicalKeyboardKey.space)) {
+      // Panning with Space + Drag
+      gridOffset -= info.delta.global;
+    }
+  }
+
+  @override
+  void onScroll(PointerScrollInfo info) {
+    // Use scroll for zooming
+    final double scrollDelta = info.scrollDelta.global.y;
+    if (scrollDelta > 0) {
+      _updateTileSize(-0.05); // Zoom out
+    } else if (scrollDelta < 0) {
+      _updateTileSize(0.05); // Zoom in
+    }
+  }
+
+  void zoomIn() {
+    _updateTileSize(0.1); // Increase tile size
+  }
+
+  void zoomOut() {
+    _updateTileSize(-0.1); // Decrease tile size
+  }
+
+  void _updateTileSize(double delta) {
+    tileSize = (tileSize + delta * baseTileSize)
+        .clamp(baseTileSize / 2, baseTileSize * 2);
   }
 }

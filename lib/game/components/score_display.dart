@@ -2,19 +2,19 @@ import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 
 class ScoreDisplay extends PositionComponent {
-  double _score;
+  int _score;
   late TextComponent _label;
-  
+
   ScoreDisplay({
     required Vector2 position,
-    double initialScore = 0,
-  }) : _score = initialScore,
-       super(
-         position: position,
-         size: Vector2(200, 40),
-       );
+    int initialScore = 0,
+  })  : _score = initialScore,
+        super(
+          position: position,
+          size: Vector2(200, 40),
+        );
 
-  set score(double value) {
+  set score(int value) {
     _score = value;
     _updateText();
   }

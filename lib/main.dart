@@ -1,130 +1,129 @@
-import 'package:flutter/material.dart';
 import 'package:flame/game.dart';
+import 'package:flutter/material.dart';
+
+import 'game/models/operation.dart';
 import 'game/multiplex.dart';
 
 void main() {
-  runApp(const MyApp());
+  final Multiplex multiplexGame =
+      Multiplex(); // Create a single instance of the game
+  runApp(MyApp(game: multiplexGame));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final Multiplex game;
+
+  const MyApp({super.key, required this.game});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Multiplex',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
+        primarySwatch: Colors.blue,
       ),
-      home: const GameScreen(),
+      home: GameScreen(game: game),
     );
   }
 }
 
 class GameScreen extends StatelessWidget {
-  const GameScreen({super.key});
+  final Multiplex game;
+
+  const GameScreen({super.key, required this.game});
 
   @override
   Widget build(BuildContext context) {
-    final game = Multiplex();
-
     return Scaffold(
       body: Row(
         children: [
-          // Main game area
           Expanded(
-            flex: 4,
-            child: GameWidget(game: game),
-          ),
-          // Sidebar
-          Container(
-            width: 250,
-            decoration: BoxDecoration(
-              border: Border(
-                left: BorderSide(
-                  color: Theme.of(context).dividerColor,
+            // Dynamically scale the game area to fill available space
+            child: Stack(
+              children: [
+                GameWidget(game: game),
+                Positioned(
+                  bottom: 16,
+                  left: 16,
+                  child: Column(
+                    children: [
+                      // ElevatedButton(
+                      //   onPressed: () {
+                      //     game.zoomIn();
+                      //   },
+                      //   child: const Text('Zoom In'),
+                      // ),
+                      // const SizedBox(height: 8),
+                      // ElevatedButton(
+                      //   onPressed: () {
+                      //     game.zoomOut();
+                      //   },
+                      //   child: const Text('Zoom Out'),
+                      // ),
+                    ],
+                  ),
                 ),
-              ),
+              ],
             ),
-            child: const Sidebar(),
+          ),
+          Container(
+            width: 200, // Fixed size for the sidebar
+            color: Colors.deepPurple[400],
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Operations',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleLarge
+                      ?.copyWith(color: Colors.white),
+                ),
+                const SizedBox(height: 16),
+                _buildOperationTile(Operation.add),
+                const SizedBox(height: 8),
+                _buildOperationTile(Operation.subtract),
+                const SizedBox(height: 8),
+                _buildOperationTile(Operation.multiply),
+                const SizedBox(height: 8),
+                _buildOperationTile(Operation.divide),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
-}
 
-class Sidebar extends StatelessWidget {
-  const Sidebar({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          alignment: Alignment.centerLeft,
-          child: Text(
-            'Available Items',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+  Widget _buildOperationTile(Operation operation) {
+    return Draggable<Operation>(
+      data: operation,
+      feedback: Container(
+        width: 80,
+        height: 40,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.orange,
+          borderRadius: BorderRadius.circular(8),
         ),
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.all(8),
-            children: [
-              _buildDraggableItem(
-                'Multiplier Machine',
-                Icons.calculate,
-                'multiplier_machine',
-              ),
-              const SizedBox(height: 8),
-              _buildDraggableItem(
-                'Conveyor Belt',
-                Icons.arrow_forward,
-                'conveyor_belt',
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDraggableItem(String label, IconData icon, String type) {
-    return Draggable<String>(
-      data: type,
-      feedback: Material(
-        elevation: 4,
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.blue.shade100,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, size: 32),
+        child: Text(
+          operation.symbol,
+          style: const TextStyle(fontSize: 20, color: Colors.white),
         ),
       ),
       child: Container(
-        padding: const EdgeInsets.all(12),
+        width: 80,
+        height: 40,
+        alignment: Alignment.center,
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade300),
+          color: Colors.orange,
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Row(
-          children: [
-            Icon(icon),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 16,
-                ),
-              ),
-            ),
-          ],
+        child: Text(
+          operation.symbol,
+          style: const TextStyle(fontSize: 20, color: Colors.white),
         ),
       ),
     );
