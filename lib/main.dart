@@ -1,12 +1,13 @@
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 
-import 'game/models/operation.dart';
+import 'game/models/tile.dart';
 import 'game/multiplex.dart';
+import 'game/tool.dart';
+import 'game/ui/sidebar.dart';
 
 void main() {
-  final Multiplex multiplexGame =
-      Multiplex(); // Create a single instance of the game
+  final Multiplex multiplexGame = Multiplex();
   runApp(MyApp(game: multiplexGame));
 }
 
@@ -28,10 +29,24 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class GameScreen extends StatelessWidget {
+class GameScreen extends StatefulWidget {
   final Multiplex game;
 
   const GameScreen({super.key, required this.game});
+
+  @override
+  State<GameScreen> createState() => _GameScreenState();
+}
+
+class _GameScreenState extends State<GameScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Set up callback to rebuild UI when level changes
+    widget.game.onLevelChanged = () {
+      setState(() {});
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,92 +54,37 @@ class GameScreen extends StatelessWidget {
       body: Row(
         children: [
           Expanded(
-            // Dynamically scale the game area to fill available space
-            child: Stack(
-              children: [
-                GameWidget(game: game),
-                Positioned(
-                  bottom: 16,
-                  left: 16,
-                  child: Column(
-                    children: [
-                      // ElevatedButton(
-                      //   onPressed: () {
-                      //     game.zoomIn();
-                      //   },
-                      //   child: const Text('Zoom In'),
-                      // ),
-                      // const SizedBox(height: 8),
-                      // ElevatedButton(
-                      //   onPressed: () {
-                      //     game.zoomOut();
-                      //   },
-                      //   child: const Text('Zoom Out'),
-                      // ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+            child: GameWidget(game: widget.game),
           ),
-          Container(
-            width: 200, // Fixed size for the sidebar
-            color: Colors.deepPurple[400],
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Operations',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(color: Colors.white),
-                ),
-                const SizedBox(height: 16),
-                _buildOperationTile(Operation.add),
-                const SizedBox(height: 8),
-                _buildOperationTile(Operation.subtract),
-                const SizedBox(height: 8),
-                _buildOperationTile(Operation.multiply),
-                const SizedBox(height: 8),
-                _buildOperationTile(Operation.divide),
-              ],
-            ),
+          // Use ValueListenableBuilder to reactively update sidebar when state changes
+          ValueListenableBuilder<Tool>(
+            valueListenable: widget.game.inputManager.selectedToolNotifier,
+            builder: (context, selectedTool, child) {
+              return ValueListenableBuilder<BeltDirection>(
+                valueListenable: widget.game.inputManager.currentBeltDirectionNotifier,
+                builder: (context, beltDirection, child) {
+                  return ValueListenableBuilder<BeltDirection>(
+                    valueListenable: widget.game.inputManager.currentOperatorDirectionNotifier,
+                    builder: (context, operatorDirection, child) {
+                      return Sidebar(
+                        selectedTool: selectedTool,
+                        beltDirection: beltDirection,
+                        operatorDirection: operatorDirection,
+                        unlockedOperators: widget.game.levelManager.currentLevel?.unlockedOperators ?? [],
+                        onToolSelected: (tool) {
+                          widget.game.inputManager.selectedTool = tool;
+                        },
+                        onRotateBelt: () {
+                          widget.game.inputManager.rotateBeltDirection();
+                        },
+                      );
+                    },
+                  );
+                },
+              );
+            },
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildOperationTile(Operation operation) {
-    return Draggable<Operation>(
-      data: operation,
-      feedback: Container(
-        width: 80,
-        height: 40,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: Colors.orange,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          operation.symbol,
-          style: const TextStyle(fontSize: 20, color: Colors.white),
-        ),
-      ),
-      child: Container(
-        width: 80,
-        height: 40,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: Colors.orange,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          operation.symbol,
-          style: const TextStyle(fontSize: 20, color: Colors.white),
-        ),
       ),
     );
   }

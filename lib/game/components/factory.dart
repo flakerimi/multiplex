@@ -4,12 +4,11 @@ import 'package:flutter/material.dart';
 
 import '../models/operation.dart';
 
-class Factory extends Component with DragCallbacks {
+class Factory extends PositionComponent with DragCallbacks {
   final int targetNumber;
   final List<Operation> availableNumbers;
   final List<Vector2> conveyorPoints;
   final void Function() onLevelComplete;
-  late Vector2 size;
 
   late final ExtractorComponent extractor;
   late final AdderComponent adder;
@@ -23,9 +22,11 @@ class Factory extends Component with DragCallbacks {
     required this.conveyorPoints,
     required this.onLevelComplete,
     Vector2? size,
-  }) {
-    this.size = size ?? Vector2(800, 600); // Default size if none provided
-  }
+    Vector2? position,
+  }) : super(
+          size: size ?? Vector2(800, 600),
+          position: position ?? Vector2.zero(),
+        );
 
   @override
   Future<void> onLoad() async {
@@ -94,6 +95,38 @@ class Factory extends Component with DragCallbacks {
       add(op);
     }
   }
+
+  @override
+  void render(Canvas canvas) {
+    super.render(canvas);
+
+    // Draw factory background (as a single tile)
+    final paint = Paint()
+      ..color = Colors.brown[700]!
+      ..style = PaintingStyle.fill;
+
+    canvas.drawRect(size.toRect(), paint);
+
+    // Draw factory icon/pattern
+    final iconPaint = Paint()
+      ..color = Colors.orange[800]!
+      ..style = PaintingStyle.fill;
+
+    // Draw a simple factory icon (gear-like pattern)
+    final centerX = size.x / 2;
+    final centerY = size.y / 2;
+    final radius = size.x / 3;
+
+    canvas.drawCircle(Offset(centerX, centerY), radius, iconPaint);
+
+    // Draw border
+    final borderPaint = Paint()
+      ..color = Colors.blueGrey[900]!
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+
+    canvas.drawRect(size.toRect(), borderPaint);
+  }
 }
 
 class ExtractorComponent extends PositionComponent with DragCallbacks {
@@ -129,6 +162,7 @@ class ExtractorComponent extends PositionComponent with DragCallbacks {
 
   @override
   bool onDragStart(DragStartEvent event) {
+    super.onDragStart(event);
     if (currentNumber != null) {
       // Create a new number component that can be dragged
       final numberComponent = NumberComponent(
@@ -259,7 +293,7 @@ class NumberComponent extends PositionComponent with DragCallbacks {
 
   @override
   void onDragUpdate(DragUpdateEvent event) {
-    position += event.delta;
+    position += event.canvasDelta;
 
     // Check if we're on a conveyor belt
     final factory = findParent<Factory>();
@@ -280,6 +314,7 @@ class NumberComponent extends PositionComponent with DragCallbacks {
 
   @override
   void onDragEnd(DragEndEvent event) {
+    super.onDragEnd(event);
     // Check if we're near the adder
     final factory = findParent<Factory>();
     if (factory != null) {

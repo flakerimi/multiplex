@@ -6,7 +6,6 @@ class MultiplierMachine extends PositionComponent {
   final Vector2 gridPosition;
   final Operation operation;
   final Function(int)? onResult;
-  final List<int> _inputs = [];
   late TextComponent _label;
 
   MultiplierMachine({

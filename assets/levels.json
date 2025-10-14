@@ -1,0 +1,192 @@
+{
+  "levels": [
+    {
+      "id": 1,
+      "targetNumber": 1,
+      "targetValue": 10,
+      "description": "Move the number 1 to the factory",
+      "unlockedTools": ["extractor", "belt"],
+      "unlockedOperators": [],
+      "numberSpawns": [
+        {
+          "value": 1,
+          "count": 3
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "targetNumber": 2,
+      "targetValue": 10,
+      "description": "Use the ADD operator to combine two 1s",
+      "unlockedTools": ["extractor", "belt"],
+      "unlockedOperators": ["add"],
+      "numberSpawns": [
+        {
+          "value": 1,
+          "count": 5
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "targetNumber": 3,
+      "targetValue": 15,
+      "description": "Combine 1 and 2 to make 3",
+      "unlockedTools": ["extractor", "belt"],
+      "unlockedOperators": ["add"],
+      "numberSpawns": [
+        {
+          "value": 1,
+          "count": 3
+        },
+        {
+          "value": 2,
+          "count": 3
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "targetNumber": 4,
+      "targetValue": 20,
+      "description": "Use multiply to make 4 (2 x 2)",
+      "unlockedTools": ["extractor", "belt"],
+      "unlockedOperators": ["add", "multiply"],
+      "numberSpawns": [
+        {
+          "value": 2,
+          "count": 5
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "targetNumber": 6,
+      "targetValue": 30,
+      "description": "Multiply 2 and 3 to make 6",
+      "unlockedTools": ["extractor", "belt"],
+      "unlockedOperators": ["add", "multiply"],
+      "numberSpawns": [
+        {
+          "value": 2,
+          "count": 3
+        },
+        {
+          "value": 3,
+          "count": 3
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "targetNumber": 10,
+      "targetValue": 50,
+      "description": "Create 10 using multiple operations",
+      "unlockedTools": ["extractor", "belt"],
+      "unlockedOperators": ["add", "multiply"],
+      "numberSpawns": [
+        {
+          "value": 2,
+          "count": 3
+        },
+        {
+          "value": 3,
+          "count": 3
+        },
+        {
+          "value": 4,
+          "count": 3
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "targetNumber": 12,
+      "targetValue": 60,
+      "description": "Use subtraction: 15 - 3 = 12",
+      "unlockedTools": ["extractor", "belt"],
+      "unlockedOperators": ["add", "multiply", "subtract"],
+      "numberSpawns": [
+        {
+          "value": 3,
+          "count": 4
+        },
+        {
+          "value": 5,
+          "count": 3
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "targetNumber": 15,
+      "targetValue": 75,
+      "description": "Combine multiple operations to reach 15",
+      "unlockedTools": ["extractor", "belt"],
+      "unlockedOperators": ["add", "multiply", "subtract"],
+      "numberSpawns": [
+        {
+          "value": 2,
+          "count": 3
+        },
+        {
+          "value": 3,
+          "count": 3
+        },
+        {
+          "value": 4,
+          "count": 3
+        },
+        {
+          "value": 5,
+          "count": 3
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "targetNumber": 20,
+      "targetValue": 100,
+      "description": "Use division: 100 / 5 = 20",
+      "unlockedTools": ["extractor", "belt"],
+      "unlockedOperators": ["add", "multiply", "subtract", "divide"],
+      "numberSpawns": [
+        {
+          "value": 5,
+          "count": 3
+        },
+        {
+          "value": 10,
+          "count": 4
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "targetNumber": 25,
+      "targetValue": 125,
+      "description": "Final challenge! Create 25 using all operations",
+      "unlockedTools": ["extractor", "belt"],
+      "unlockedOperators": ["add", "multiply", "subtract", "divide"],
+      "numberSpawns": [
+        {
+          "value": 2,
+          "count": 3
+        },
+        {
+          "value": 3,
+          "count": 3
+        },
+        {
+          "value": 5,
+          "count": 4
+        },
+        {
+          "value": 10,
+          "count": 3
+        }
+      ]
+    }
+  ]
+}
