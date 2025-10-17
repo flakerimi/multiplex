@@ -192,7 +192,7 @@ class GameScreen extends StatelessWidget {
                 game.inputManager.endDrag();
               },
               child: MouseRegion(
-                cursor: selectedTool == Tool.belt ? SystemMouseCursors.none : SystemMouseCursors.basic,
+                cursor: selectedTool == Tool.none ? SystemMouseCursors.basic : SystemMouseCursors.none,
                 onHover: (event) {
                   screenController.updateMousePosition(event.localPosition);
                 },

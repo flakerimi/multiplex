@@ -18,8 +18,8 @@ class CustomCursor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Only show custom cursor for belt tool
-    if (selectedTool != Tool.belt) {
+    // Don't show custom cursor for "none" tool
+    if (selectedTool == Tool.none) {
       return const SizedBox.shrink();
     }
 
@@ -30,7 +30,15 @@ class CustomCursor extends StatelessWidget {
       left: position.dx - halfSize, // Center the cursor
       top: position.dy - halfSize,
       child: IgnorePointer(
-        child: Transform.rotate(
+        child: _buildCursorWidget(cursorSize),
+      ),
+    );
+  }
+
+  Widget _buildCursorWidget(double cursorSize) {
+    switch (selectedTool) {
+      case Tool.belt:
+        return Transform.rotate(
           angle: _getRotationAngle(),
           child: Container(
             width: cursorSize,
@@ -44,9 +52,83 @@ class CustomCursor extends StatelessWidget {
               painter: _BeltArrowPainter(),
             ),
           ),
-        ),
-      ),
-    );
+        );
+      case Tool.extractor:
+        return Container(
+          width: cursorSize,
+          height: cursorSize,
+          decoration: BoxDecoration(
+            color: Colors.purple.withValues(alpha: 0.6),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 2),
+          ),
+          child: Center(
+            child: Container(
+              width: cursorSize * 0.3,
+              height: cursorSize * 0.3,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+        );
+      case Tool.operatorAdd:
+      case Tool.operatorSubtract:
+      case Tool.operatorMultiply:
+      case Tool.operatorDivide:
+        return Container(
+          width: cursorSize,
+          height: cursorSize,
+          decoration: BoxDecoration(
+            color: _getOperatorColor().withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: Colors.white, width: 2),
+          ),
+          child: Center(
+            child: Text(
+              _getOperatorSymbol(),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: cursorSize * 0.5,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        );
+      case Tool.none:
+        return const SizedBox.shrink();
+    }
+  }
+
+  Color _getOperatorColor() {
+    switch (selectedTool) {
+      case Tool.operatorAdd:
+        return Colors.green;
+      case Tool.operatorSubtract:
+        return Colors.red;
+      case Tool.operatorMultiply:
+        return Colors.orange;
+      case Tool.operatorDivide:
+        return Colors.teal;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String _getOperatorSymbol() {
+    switch (selectedTool) {
+      case Tool.operatorAdd:
+        return '+';
+      case Tool.operatorSubtract:
+        return '-';
+      case Tool.operatorMultiply:
+        return '×';
+      case Tool.operatorDivide:
+        return '÷';
+      default:
+        return '';
+    }
   }
 
   double _getRotationAngle() {

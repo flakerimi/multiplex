@@ -39,6 +39,9 @@ class Tile {
   final OperatorType? operatorType; // Type of operator
   final int? numberValue; // Value for number tiles
   final int? carryingNumber; // Number being carried by belt/extractor
+  final double movementProgress; // 0.0 to 1.0, for smooth animations
+  final int? movingToX; // Target X coordinate for animation
+  final int? movingToY; // Target Y coordinate for animation
 
   Tile({
     required this.type,
@@ -56,6 +59,9 @@ class Tile {
     this.operatorType,
     this.numberValue,
     this.carryingNumber,
+    this.movementProgress = 0.0,
+    this.movingToX,
+    this.movingToY,
   });
 
   // Factory constructor for empty tiles
@@ -119,6 +125,10 @@ class Tile {
   Tile copyWith({
     int? carryingNumber,
     bool clearCarrying = false,
+    double? movementProgress,
+    int? movingToX,
+    int? movingToY,
+    bool clearMovement = false,
   }) {
     return Tile(
       type: type,
@@ -136,6 +146,9 @@ class Tile {
       operatorType: operatorType,
       numberValue: numberValue,
       carryingNumber: clearCarrying ? null : (carryingNumber ?? this.carryingNumber),
+      movementProgress: clearMovement ? 0.0 : (movementProgress ?? this.movementProgress),
+      movingToX: clearMovement ? null : (movingToX ?? this.movingToX),
+      movingToY: clearMovement ? null : (movingToY ?? this.movingToY),
     );
   }
 
