@@ -111,15 +111,14 @@ class GameScreen extends StatelessWidget {
             return Listener(
               behavior: HitTestBehavior.translucent, // Don't consume events
               onPointerDown: (event) {
+                final tileSize = game.tileSize;
+                final gridOffset = game.gridOffset;
+                final gridX = ((event.localPosition.dx + gridOffset.x) / tileSize).floor();
+                final gridY = ((event.localPosition.dy + gridOffset.y) / tileSize).floor();
+
                 // Right button = 2 in the buttons bitmask
                 if ((event.buttons & 2) != 0) {
                   screenController.isRightClickDragging.value = true;
-
-                  // Convert screen position to grid coordinates
-                  final tileSize = game.tileSize;
-                  final gridOffset = game.gridOffset;
-                  final gridX = ((event.localPosition.dx + gridOffset.x) / tileSize).floor();
-                  final gridY = ((event.localPosition.dy + gridOffset.y) / tileSize).floor();
 
                   // Start tracking last position
                   screenController.lastRightClickGridPos.value = Offset(gridX.toDouble(), gridY.toDouble());
@@ -127,22 +126,34 @@ class GameScreen extends StatelessWidget {
                   // Remove tile at start position
                   game.inputManager.handleTap(gridX, gridY, isRightClick: true);
                 }
+                // Left button = 1 in the buttons bitmask
+                else if ((event.buttons & 1) != 0 && selectedTool == Tool.belt) {
+                  screenController.isLeftClickDragging.value = true;
+
+                  // Start drag for axis locking
+                  game.inputManager.startDrag(gridX, gridY);
+
+                  // Track last position
+                  screenController.lastLeftClickGridPos.value = Offset(gridX.toDouble(), gridY.toDouble());
+
+                  // Place belt at start position
+                  game.inputManager.handleTap(gridX, gridY);
+                }
               },
               onPointerMove: (event) {
                 // Update cursor position during drag (hover events don't fire during drag)
                 screenController.updateMousePosition(event.localPosition);
+
+                final tileSize = game.tileSize;
+                final gridOffset = game.gridOffset;
+                final gridX = ((event.localPosition.dx + gridOffset.x) / tileSize).floor();
+                final gridY = ((event.localPosition.dy + gridOffset.y) / tileSize).floor();
 
                 // Handle right-click drag manually (Flame's PanDetector doesn't support it)
                 if ((event.buttons & 2) != 0) {
                   if (!screenController.isRightClickDragging.value) {
                     screenController.isRightClickDragging.value = true;
                   }
-
-                  // Convert screen position to grid coordinates
-                  final tileSize = game.tileSize;
-                  final gridOffset = game.gridOffset;
-                  final gridX = ((event.localPosition.dx + gridOffset.x) / tileSize).floor();
-                  final gridY = ((event.localPosition.dy + gridOffset.y) / tileSize).floor();
 
                   // Only remove if we moved to a different grid cell
                   final lastPos = screenController.lastRightClickGridPos.value;
@@ -151,14 +162,34 @@ class GameScreen extends StatelessWidget {
                     game.inputManager.handleTap(gridX, gridY, isRightClick: true);
                   }
                 }
+                // Handle left-click drag for belt placement
+                else if ((event.buttons & 1) != 0 && selectedTool == Tool.belt) {
+                  if (!screenController.isLeftClickDragging.value) {
+                    screenController.isLeftClickDragging.value = true;
+                    game.inputManager.startDrag(gridX, gridY);
+                  }
+
+                  // Only place if we moved to a different grid cell
+                  final lastPos = screenController.lastLeftClickGridPos.value;
+                  if (lastPos == null || lastPos.dx.toInt() != gridX || lastPos.dy.toInt() != gridY) {
+                    screenController.lastLeftClickGridPos.value = Offset(gridX.toDouble(), gridY.toDouble());
+                    game.inputManager.handleTap(gridX, gridY);
+                  }
+                }
               },
               onPointerUp: (event) {
                 screenController.isRightClickDragging.value = false;
                 screenController.lastRightClickGridPos.value = null;
+                screenController.isLeftClickDragging.value = false;
+                screenController.lastLeftClickGridPos.value = null;
+                game.inputManager.endDrag();
               },
               onPointerCancel: (event) {
                 screenController.isRightClickDragging.value = false;
                 screenController.lastRightClickGridPos.value = null;
+                screenController.isLeftClickDragging.value = false;
+                screenController.lastLeftClickGridPos.value = null;
+                game.inputManager.endDrag();
               },
               child: MouseRegion(
                 cursor: selectedTool == Tool.belt ? SystemMouseCursors.none : SystemMouseCursors.basic,

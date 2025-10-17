@@ -19,7 +19,6 @@ import 'models/tile.dart';
 class Multiplex extends FlameGame
     with
         PanDetector,
-        ScrollDetector,
         TapDetector,
         SecondaryTapDetector,
         KeyboardEvents {
@@ -69,11 +68,7 @@ class Multiplex extends FlameGame
   Map<String, dynamic>? _pendingProgressData;
 
   // Track dragging state
-  bool _isDragging = false;
   bool _isRightClickDrag = false;
-  bool _isScrolling = false; // Track if currently scrolling (to prevent tile placement)
-  double _scrollCooldown = 0.0; // Cooldown timer after scroll to prevent tile placement
-  Vector2? _lastDragGridPos;
 
   Multiplex() {
     // Initialize managers in constructor so they're available immediately
@@ -227,15 +222,6 @@ class Multiplex extends FlameGame
     totalPlaytime += dt;
     currentLevelTime += dt;
 
-    // Update scroll cooldown timer
-    if (_scrollCooldown > 0) {
-      _scrollCooldown -= dt;
-      if (_scrollCooldown <= 0) {
-        _scrollCooldown = 0;
-        _isScrolling = false;
-      }
-    }
-
     // Update factory position and size based on grid
     // Position at center of (0,0) tile since factory uses Anchor.center
     final centerOffset = Vector2.all(tileSize / 2);
@@ -373,7 +359,6 @@ class Multiplex extends FlameGame
   void onTapDown(TapDownInfo info) {
     super.onTapDown(info);
     _isRightClickDrag = false; // Left button
-    _isScrolling = false; // Clear scrolling on tap
 
     // Use widget position (relative to game widget) instead of global (includes title bar)
     final screenPos = info.eventPosition.widget;
@@ -391,7 +376,6 @@ class Multiplex extends FlameGame
   void onSecondaryTapDown(TapDownInfo info) {
     super.onSecondaryTapDown(info);
     _isRightClickDrag = true; // Right button
-    _isScrolling = false; // Clear scrolling on tap
 
     // Single right-click removal - always allowed
     if (!inputManager.isPanning && !inputManager.isZooming) {
@@ -407,69 +391,31 @@ class Multiplex extends FlameGame
   void onPanStart(DragStartInfo info) {
     super.onPanStart(info);
 
-    debugPrint('PAN START - isScrolling: $_isScrolling, cooldown: $_scrollCooldown, tool: ${inputManager.selectedTool}');
-
-    // Don't start dragging if we're scrolling or in cooldown period
-    if (_isScrolling || _scrollCooldown > 0) {
-      debugPrint('  BLOCKED by scroll state');
-      return;
-    }
-
-    // Check if right-click is pressed via callback or fallback to local state
-    final bool isRightClick = isRightClickPressed?.call() ?? _isRightClickDrag;
-
-    // Start dragging if not panning/zooming
-    // For placement: only if a tool is selected
-    // For removal: always allow right-click drag
+    // ONLY handle pan events when Space/Shift is pressed (for camera panning/zooming)
+    // This prevents Magic Mouse gestures from triggering pan events
     if (!inputManager.isPanning && !inputManager.isZooming) {
-      if (isRightClick || inputManager.selectedTool != Tool.none) {
-        _isDragging = true;
-        debugPrint('  STARTED dragging (rightClick: $isRightClick)');
-
-        // Use widget position instead of global to account for title bar
-        final gridPos = screenToGrid(info.eventPosition.widget);
-        final gridX = gridPos.x.toInt();
-        final gridY = gridPos.y.toInt();
-        _lastDragGridPos = Vector2(gridX.toDouble(), gridY.toDouble());
-
-        // Start drag tracking for axis locking
-        inputManager.startDrag(gridX, gridY);
-
-        // Place/remove tile at start position
-        inputManager.handleTap(gridX, gridY, isRightClick: isRightClick);
-      }
+      return; // Ignore all pan events unless explicitly panning/zooming
     }
   }
 
   @override
   void onPanEnd(DragEndInfo info) {
     super.onPanEnd(info);
-    _isDragging = false;
     _isRightClickDrag = false;
-    _isScrolling = false; // Clear scrolling state
-    _lastDragGridPos = null;
-
-    // End drag tracking for axis locking
-    inputManager.endDrag();
   }
 
   @override
   void onPanCancel() {
     super.onPanCancel();
-    _isDragging = false;
     _isRightClickDrag = false;
-    _isScrolling = false; // Clear scrolling state
-    _lastDragGridPos = null;
-
-    // End drag tracking for axis locking
-    inputManager.endDrag();
   }
 
   @override
   void onPanUpdate(DragUpdateInfo info) {
-    // Don't place tiles if scrolling
-    if (_isScrolling) {
-      return;
+    // ONLY handle pan updates when Space/Shift is pressed
+    // This prevents Magic Mouse gestures from being processed as pan events
+    if (!inputManager.isPanning && !inputManager.isZooming) {
+      return; // Ignore all pan updates unless explicitly panning/zooming
     }
 
     if (inputManager.isZooming) {
@@ -483,43 +429,9 @@ class Multiplex extends FlameGame
     } else if (inputManager.isPanning) {
       // Panning with Space + Drag
       cameraManager.pan(info.delta.global);
-    } else if (_isDragging) {
-      // Continuous tile placement/removal while dragging
-      // Check if right-click is pressed via callback or fallback to local state
-      final bool isRightClick = isRightClickPressed?.call() ?? _isRightClickDrag;
-
-      // Use widget position instead of global to account for title bar
-      final gridPos = screenToGrid(info.eventPosition.widget);
-      final gridX = gridPos.x.toInt();
-      final gridY = gridPos.y.toInt();
-
-      // Only place/remove if we moved to a different grid cell
-      if (_lastDragGridPos == null ||
-          _lastDragGridPos!.x.toInt() != gridX ||
-          _lastDragGridPos!.y.toInt() != gridY) {
-
-        _lastDragGridPos = Vector2(gridX.toDouble(), gridY.toDouble());
-        inputManager.handleTap(gridX, gridY, isRightClick: isRightClick);
-      }
     }
   }
 
-  @override
-  void onScroll(PointerScrollInfo info) {
-    // Mark as scrolling and set cooldown to prevent tile placement for 0.3 seconds
-    _isScrolling = true;
-    _scrollCooldown = 0.3; // 300ms cooldown after scroll
-    _isDragging = false;
-    _lastDragGridPos = null;
-
-    // Use scroll for zooming only
-    final double scrollDelta = info.scrollDelta.global.y;
-    if (scrollDelta > 0) {
-      cameraManager.zoom(-0.05); // Zoom out
-    } else if (scrollDelta < 0) {
-      cameraManager.zoom(0.05); // Zoom in
-    }
-  }
 
   void zoomIn() {
     cameraManager.zoomIn();

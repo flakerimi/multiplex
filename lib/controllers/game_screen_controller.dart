@@ -12,6 +12,8 @@ class GameScreenController extends GetxController {
   final RxBool hasUnsavedChanges = false.obs;
   final RxBool isRightClickDragging = false.obs;
   final Rx<Offset?> lastRightClickGridPos = Rx<Offset?>(null);
+  final RxBool isLeftClickDragging = false.obs;
+  final Rx<Offset?> lastLeftClickGridPos = Rx<Offset?>(null);
 
   GameScreenController({required this.game});
 
