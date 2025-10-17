@@ -1,91 +1,74 @@
-import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 
-import 'game/models/tile.dart';
+import 'controllers/auth_controller.dart';
 import 'game/multiplex.dart';
-import 'game/tool.dart';
-import 'game/ui/sidebar.dart';
+import 'screens/achievements_screen.dart';
+import 'screens/auth_screen.dart';
+import 'screens/game_menu_screen.dart';
+import 'screens/game_screen.dart';
+import 'screens/leaderboard_screen.dart';
+import 'screens/profile_screen.dart';
 
-void main() {
-  final Multiplex multiplexGame = Multiplex();
-  runApp(MyApp(game: multiplexGame));
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await GetStorage.init();
+
+  // Initialize GetX dependencies
+  Get.put(AuthController());
+
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  final Multiplex game;
-
-  const MyApp({super.key, required this.game});
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return GetMaterialApp(
       title: 'Multiplex',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: GameScreen(game: game),
+      home: const AuthWrapper(),
+      getPages: [
+        GetPage(name: '/menu', page: () => const GameMenuScreen()),
+        GetPage(name: '/game', page: () => GameScreen(game: Multiplex())),
+        GetPage(name: '/profile', page: () => const ProfileScreen()),
+        GetPage(name: '/leaderboard', page: () => const LeaderboardScreen()),
+        GetPage(name: '/achievements', page: () => const AchievementsScreen()),
+      ],
     );
   }
 }
 
-class GameScreen extends StatefulWidget {
-  final Multiplex game;
-
-  const GameScreen({super.key, required this.game});
-
-  @override
-  State<GameScreen> createState() => _GameScreenState();
-}
-
-class _GameScreenState extends State<GameScreen> {
-  @override
-  void initState() {
-    super.initState();
-    // Set up callback to rebuild UI when level changes
-    widget.game.onLevelChanged = () {
-      setState(() {});
-    };
-  }
+class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Row(
-        children: [
-          Expanded(
-            child: GameWidget(game: widget.game),
+    final authController = Get.find<AuthController>();
+
+    return Obx(() {
+      // Show loading indicator while checking auth
+      if (authController.isLoading.value && authController.currentUser.value == null) {
+        return const Scaffold(
+          body: Center(
+            child: CircularProgressIndicator(),
           ),
-          // Use ValueListenableBuilder to reactively update sidebar when state changes
-          ValueListenableBuilder<Tool>(
-            valueListenable: widget.game.inputManager.selectedToolNotifier,
-            builder: (context, selectedTool, child) {
-              return ValueListenableBuilder<BeltDirection>(
-                valueListenable: widget.game.inputManager.currentBeltDirectionNotifier,
-                builder: (context, beltDirection, child) {
-                  return ValueListenableBuilder<BeltDirection>(
-                    valueListenable: widget.game.inputManager.currentOperatorDirectionNotifier,
-                    builder: (context, operatorDirection, child) {
-                      return Sidebar(
-                        selectedTool: selectedTool,
-                        beltDirection: beltDirection,
-                        operatorDirection: operatorDirection,
-                        unlockedOperators: widget.game.levelManager.currentLevel?.unlockedOperators ?? [],
-                        onToolSelected: (tool) {
-                          widget.game.inputManager.selectedTool = tool;
-                        },
-                        onRotateBelt: () {
-                          widget.game.inputManager.rotateBeltDirection();
-                        },
-                      );
-                    },
-                  );
-                },
-              );
-            },
-          ),
-        ],
-      ),
-    );
+        );
+      }
+
+      // Show auth screen if not authenticated
+      if (!authController.isAuthenticated.value) {
+        return const AuthScreen();
+      }
+
+      // Show game menu if authenticated
+      return const GameMenuScreen();
+    });
   }
 }
+

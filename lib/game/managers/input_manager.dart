@@ -14,6 +14,11 @@ class InputManager {
   final ValueNotifier<BeltDirection> currentBeltDirectionNotifier = ValueNotifier(BeltDirection.right);
   final ValueNotifier<BeltDirection> currentOperatorDirectionNotifier = ValueNotifier(BeltDirection.right);
 
+  // Callbacks for tracking placed items
+  VoidCallback? onBeltPlaced;
+  VoidCallback? onOperatorPlaced;
+  VoidCallback? onExtractorPlaced;
+
   // Getters for backward compatibility
   Tool get selectedTool => selectedToolNotifier.value;
   set selectedTool(Tool value) => selectedToolNotifier.value = value;
@@ -96,6 +101,7 @@ class InputManager {
         // Can only place belt on empty tiles
         if (existingTile.type == TileType.empty) {
           tileManager.placeBelt(gridX, gridY, currentBeltDirection);
+          onBeltPlaced?.call();
         }
         break;
       case Tool.extractor:
@@ -103,28 +109,32 @@ class InputManager {
         if (existingTile.type == TileType.number && existingTile.numberValue != null) {
           // Place extractor with the number value from the number tile
           tileManager.placeExtractor(gridX, gridY, extractValue: existingTile.numberValue!);
-          print('DEBUG: Placed extractor at ($gridX, $gridY) with value ${existingTile.numberValue}');
+          onExtractorPlaced?.call();
         }
         break;
       case Tool.operatorAdd:
         // Can only place operator on empty tiles (and check 3-tile space)
         if (_canPlaceOperator(gridX, gridY)) {
           tileManager.placeOperator(gridX, gridY, OperatorType.add, currentOperatorDirection);
+          onOperatorPlaced?.call();
         }
         break;
       case Tool.operatorSubtract:
         if (_canPlaceOperator(gridX, gridY)) {
           tileManager.placeOperator(gridX, gridY, OperatorType.subtract, currentOperatorDirection);
+          onOperatorPlaced?.call();
         }
         break;
       case Tool.operatorMultiply:
         if (_canPlaceOperator(gridX, gridY)) {
           tileManager.placeOperator(gridX, gridY, OperatorType.multiply, currentOperatorDirection);
+          onOperatorPlaced?.call();
         }
         break;
       case Tool.operatorDivide:
         if (_canPlaceOperator(gridX, gridY)) {
           tileManager.placeOperator(gridX, gridY, OperatorType.divide, currentOperatorDirection);
+          onOperatorPlaced?.call();
         }
         break;
     }

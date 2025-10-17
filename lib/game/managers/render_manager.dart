@@ -301,25 +301,28 @@ class RenderManager {
       ..color = Colors.black.withValues(alpha: 0.2)
       ..strokeWidth = 1.0;
 
-    final double startX = (visibleRect.left + gridOffset.x) ~/ tileSize * tileSize;
-    final double startY = (visibleRect.top + gridOffset.y) ~/ tileSize * tileSize;
-    final double endX = (visibleRect.right + gridOffset.x) ~/ tileSize * tileSize + tileSize;
-    final double endY = (visibleRect.bottom + gridOffset.y) ~/ tileSize * tileSize + tileSize;
+    // Calculate which grid cells are visible (same logic as drawTiles)
+    final int startGridX = ((visibleRect.left + gridOffset.x) / tileSize).floor();
+    final int startGridY = ((visibleRect.top + gridOffset.y) / tileSize).floor();
+    final int endGridX = ((visibleRect.right + gridOffset.x) / tileSize).ceil();
+    final int endGridY = ((visibleRect.bottom + gridOffset.y) / tileSize).ceil();
 
-    // Draw vertical grid lines
-    for (double x = startX; x <= endX; x += tileSize) {
+    // Draw vertical grid lines at each grid cell boundary
+    for (int gridX = startGridX; gridX <= endGridX; gridX++) {
+      final double screenX = gridX * tileSize - gridOffset.x;
       canvas.drawLine(
-        Offset(x - gridOffset.x, 0),
-        Offset(x - gridOffset.x, visibleRect.bottom),
+        Offset(screenX, 0),
+        Offset(screenX, visibleRect.bottom),
         paint,
       );
     }
 
-    // Draw horizontal grid lines
-    for (double y = startY; y <= endY; y += tileSize) {
+    // Draw horizontal grid lines at each grid cell boundary
+    for (int gridY = startGridY; gridY <= endGridY; gridY++) {
+      final double screenY = gridY * tileSize - gridOffset.y;
       canvas.drawLine(
-        Offset(0, y - gridOffset.y),
-        Offset(visibleRect.right, y - gridOffset.y),
+        Offset(0, screenY),
+        Offset(visibleRect.right, screenY),
         paint,
       );
     }
@@ -338,6 +341,7 @@ class RenderManager {
       ),
     );
 
+    // Use the EXACT same approach as the downloaded working version
     final double startX = (visibleRect.left + gridOffset.x) ~/ tileSize * tileSize;
     final double startY = (visibleRect.top + gridOffset.y) ~/ tileSize * tileSize;
     final double endX = (visibleRect.right + gridOffset.x) ~/ tileSize * tileSize + tileSize;
@@ -361,17 +365,6 @@ class RenderManager {
     }
   }
 
-  void drawViewportBorder(Canvas canvas, Rect visibleRect) {
-    final borderPaint = Paint()
-      ..color = Colors.red
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.0;
-
-    canvas.drawRect(
-      Rect.fromLTWH(0, 0, visibleRect.width, visibleRect.height),
-      borderPaint,
-    );
-  }
 
   void _drawNumberValue(Canvas canvas, double x, double y, int value) {
     final tileSize = getTileSize();

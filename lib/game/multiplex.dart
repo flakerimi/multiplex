@@ -35,6 +35,20 @@ class Multiplex extends FlameGame
   // Callback for when level changes (to update UI)
   VoidCallback? onLevelChanged;
 
+  // Game Statistics
+  int totalScore = 0;
+  int tilesProcessed = 0;
+  int beltsPlaced = 0;
+  int operatorsPlaced = 0;
+  int extractorsPlaced = 0;
+  int levelsCompleted = 0;
+  double totalPlaytime = 0.0; // in seconds
+  int currentLevelBelts = 0;
+  double currentLevelTime = 0.0;
+
+  // Callbacks for stat updates
+  VoidCallback? onStatsChanged;
+
   // Track dragging state
   bool _isDragging = false;
   bool _isRightClickDrag = false;
@@ -59,6 +73,21 @@ class Multiplex extends FlameGame
     );
     inputManager = InputManager(tileManager: tileManager);
     levelManager = LevelManager();
+
+    // Set up input callbacks to track stats
+    inputManager.onBeltPlaced = () {
+      beltsPlaced++;
+      currentLevelBelts++;
+      onStatsChanged?.call();
+    };
+    inputManager.onOperatorPlaced = () {
+      operatorsPlaced++;
+      onStatsChanged?.call();
+    };
+    inputManager.onExtractorPlaced = () {
+      extractorsPlaced++;
+      onStatsChanged?.call();
+    };
   }
 
   @override
@@ -177,6 +206,10 @@ class Multiplex extends FlameGame
   void update(double dt) {
     super.update(dt);
 
+    // Update playtime
+    totalPlaytime += dt;
+    currentLevelTime += dt;
+
     // Update factory position and size based on grid
     // Position at center of (0,0) tile since factory uses Anchor.center
     final centerOffset = Vector2.all(tileSize / 2);
@@ -211,15 +244,11 @@ class Multiplex extends FlameGame
       return entry.value.type == TileType.extractor && entry.value.extractValue != null;
     }).toList();
 
-    print('DEBUG: Found ${extractors.length} extractors');
-
     for (final extractorEntry in extractors) {
       final coords = extractorEntry.key.split(',');
       final extractorX = int.parse(coords[0]);
       final extractorY = int.parse(coords[1]);
       final extractValue = extractorEntry.value.extractValue!;
-
-      print('DEBUG: Extractor at ($extractorX, $extractorY) wants to spawn $extractValue');
 
       // Try spawning in all 4 adjacent directions
       final adjacentPositions = [
@@ -233,23 +262,15 @@ class Multiplex extends FlameGame
       for (final pos in adjacentPositions) {
         final spawnX = pos[0] as int;
         final spawnY = pos[1] as int;
-        final direction = pos[2] as String;
         final targetTile = tileManager.getTile(spawnX, spawnY);
-
-        print('DEBUG: Checking $direction ($spawnX, $spawnY): type=${targetTile.type}, carrying=${targetTile.carryingNumber}');
 
         // Only spawn directly onto belts that aren't carrying anything
         if (targetTile.type == TileType.belt && targetTile.carryingNumber == null) {
           final updatedBelt = targetTile.copyWith(carryingNumber: extractValue);
           tileManager.setTile(spawnX, spawnY, updatedBelt);
-          print('DEBUG: ✓ Successfully spawned $extractValue onto belt at ($spawnX, $spawnY)');
           spawned = true;
           break; // Only spawn once per cycle
         }
-      }
-
-      if (!spawned) {
-        print('DEBUG: ✗ No available belt found adjacent to extractor');
       }
     }
   }
@@ -259,8 +280,6 @@ class Multiplex extends FlameGame
     final belts = tileManager.tiles.entries.where((entry) {
       return entry.value.type == TileType.belt;
     }).toList();
-
-    print('DEBUG: Moving ${belts.length} belts');
 
     // First pass: Pick up numbers from source tiles
     final pickupActions = <String, int>{};
@@ -403,16 +422,12 @@ class Multiplex extends FlameGame
              entry.value.operatorType != null;
     }).toList();
 
-    print('DEBUG: Processing ${operators.length} operators');
-
     for (final operatorEntry in operators) {
       final coords = operatorEntry.key.split(',');
       final operatorX = int.parse(coords[0]);
       final operatorY = int.parse(coords[1]);
       final operator = operatorEntry.value;
       final isHorizontal = operator.width == 3;
-
-      print('DEBUG: Operator at ($operatorX, $operatorY), type=${operator.operatorType}, horizontal=$isHorizontal');
 
       // Get input tile positions
       int input1X, input1Y, input2X, input2Y;
@@ -429,9 +444,6 @@ class Multiplex extends FlameGame
       // Check if both inputs have numbers from belts
       final input1Tile = tileManager.getTile(input1X, input1Y);
       final input2Tile = tileManager.getTile(input2X, input2Y);
-
-      print('DEBUG: Input1 at ($input1X, $input1Y): type=${input1Tile.type}, carrying=${input1Tile.carryingNumber}');
-      print('DEBUG: Input2 at ($input2X, $input2Y): type=${input2Tile.type}, carrying=${input2Tile.carryingNumber}');
 
       // Inputs can be belts carrying numbers OR the operator input tiles themselves carrying numbers
       final int? num1 = input1Tile.carryingNumber;
@@ -458,7 +470,6 @@ class Multiplex extends FlameGame
         }
 
         if (result != null) {
-          print('DEBUG: ✓ Operation: $num1 ${_getOperatorSymbol(operator.operatorType!)} $num2 = $result');
 
           // Clear inputs
           if (input1Tile.type == TileType.belt) {
@@ -495,6 +506,11 @@ class Multiplex extends FlameGame
     if (value == factoryComponent.targetNumber) {
       factoryComponent.currentValue++;
 
+      // Update stats - tile processed and score
+      tilesProcessed++;
+      totalScore += 10 * levelManager.currentLevelNumber; // Score increases with level
+      onStatsChanged?.call();
+
       // Update factory origin tile in tile manager
       final factoryTile = tileManager.getTile(0, 0);
       if (factoryTile.type == TileType.factory && factoryTile.isOrigin) {
@@ -518,12 +534,29 @@ class Multiplex extends FlameGame
   }
 
   void _completeLevel() {
-  
     if (factoryComponent.currentValue >= factoryComponent.targetValue) {
+      // Update stats for level completion
+      levelsCompleted++;
+
+      // Bonus points for completing level
+      int levelBonus = 100 * levelManager.currentLevelNumber;
+
+      // Speed bonus if completed quickly (under 2 minutes)
+      if (currentLevelTime < 120) {
+        levelBonus += 500;
+      }
+
+      // Efficiency bonus if used few belts (under 15)
+      if (currentLevelBelts < 15) {
+        levelBonus += 250;
+      }
+
+      totalScore += levelBonus;
+      onStatsChanged?.call();
+
       levelManager.nextLevel();
       _loadLevel();
     }
-    
   }
 
   void _loadLevel() {
@@ -532,6 +565,10 @@ class Multiplex extends FlameGame
 
     // Clear all tiles
     tileManager.tiles.clear();
+
+    // Reset level-specific stats
+    currentLevelBelts = 0;
+    currentLevelTime = 0.0;
 
     // Reset factory
     final targetNumber = currentLevel.targetNumber;
@@ -557,11 +594,14 @@ class Multiplex extends FlameGame
   void render(Canvas canvas) {
     final visibleRect = camera.viewport.size.toRect();
 
-    // Draw grid and tiles first
+    // Draw grid first
     renderManager.drawInfiniteGrid(canvas, visibleRect);
+
+    // Draw tiles
     renderManager.drawTiles(canvas, visibleRect);
+
+    // Draw coordinates on top so they're always visible
     renderManager.drawCellCoordinates(canvas, visibleRect, baseTileSize);
-    renderManager.drawViewportBorder(canvas, visibleRect);
 
     // Then draw factory component on top (covers grid)
     super.render(canvas);
@@ -583,11 +623,14 @@ class Multiplex extends FlameGame
     super.onTapDown(info);
     _isRightClickDrag = false; // Left button
 
+    // Use widget position (relative to game widget) instead of global (includes title bar)
+    final screenPos = info.eventPosition.widget;
+    final gridPos = screenToGrid(screenPos);
+    final gridX = gridPos.x.toInt();
+    final gridY = gridPos.y.toInt();
+
     // Single tap placement - only if tool is selected and not panning/zooming
     if (!inputManager.isPanning && !inputManager.isZooming && inputManager.selectedTool != Tool.none) {
-      final gridPos = screenToGrid(info.eventPosition.global);
-      final gridX = gridPos.x.toInt();
-      final gridY = gridPos.y.toInt();
       inputManager.handleTap(gridX, gridY);
     }
   }
@@ -599,7 +642,8 @@ class Multiplex extends FlameGame
 
     // Single right-click removal - always allowed
     if (!inputManager.isPanning && !inputManager.isZooming) {
-      final gridPos = screenToGrid(info.eventPosition.global);
+      // Use widget position instead of global to account for title bar
+      final gridPos = screenToGrid(info.eventPosition.widget);
       final gridX = gridPos.x.toInt();
       final gridY = gridPos.y.toInt();
       inputManager.handleTap(gridX, gridY, isRightClick: true);
@@ -617,7 +661,8 @@ class Multiplex extends FlameGame
       if (_isRightClickDrag || inputManager.selectedTool != Tool.none) {
         _isDragging = true;
 
-        final gridPos = screenToGrid(info.eventPosition.global);
+        // Use widget position instead of global to account for title bar
+        final gridPos = screenToGrid(info.eventPosition.widget);
         final gridX = gridPos.x.toInt();
         final gridY = gridPos.y.toInt();
         _lastDragGridPos = Vector2(gridX.toDouble(), gridY.toDouble());
@@ -659,7 +704,8 @@ class Multiplex extends FlameGame
       gridOffset -= info.delta.global;
     } else if (_isDragging) {
       // Continuous tile placement/removal while dragging
-      final gridPos = screenToGrid(info.eventPosition.global);
+      // Use widget position instead of global to account for title bar
+      final gridPos = screenToGrid(info.eventPosition.widget);
       final gridX = gridPos.x.toInt();
       final gridY = gridPos.y.toInt();
 
@@ -700,5 +746,43 @@ class Multiplex extends FlameGame
   void _updateTileSize(double delta) {
     tileSize = (tileSize + delta * baseTileSize)
         .clamp(baseTileSize / 2, baseTileSize * 2);
+  }
+
+  /// Export current game state for saving/persistence
+  Map<String, dynamic> exportState() {
+    return {
+      'currentLevel': levelManager.currentLevelNumber,
+      'totalScore': totalScore,
+      'tilesProcessed': tilesProcessed,
+      'beltsPlaced': beltsPlaced,
+      'operatorsPlaced': operatorsPlaced,
+      'extractorsPlaced': extractorsPlaced,
+      'levelsCompleted': levelsCompleted,
+      'totalPlaytimeSeconds': totalPlaytime.toInt(),
+      'lastPlayed': DateTime.now().toIso8601String(),
+    };
+  }
+
+  /// Import and restore game state from saved data
+  void importState(Map<String, dynamic> state) {
+    totalScore = state['totalScore'] ?? 0;
+    tilesProcessed = state['tilesProcessed'] ?? 0;
+    beltsPlaced = state['beltsPlaced'] ?? 0;
+    operatorsPlaced = state['operatorsPlaced'] ?? 0;
+    extractorsPlaced = state['extractorsPlaced'] ?? 0;
+    levelsCompleted = state['levelsCompleted'] ?? 0;
+    totalPlaytime = (state['totalPlaytimeSeconds'] ?? 0).toDouble();
+
+    // Restore level and load it
+    final targetLevel = state['currentLevel'] ?? 1;
+    if (targetLevel > levelManager.currentLevelNumber) {
+      while (levelManager.currentLevelNumber < targetLevel &&
+             levelManager.currentLevelNumber < levelManager.totalLevels) {
+        levelManager.nextLevel();
+      }
+    }
+    _loadLevel();
+    onStatsChanged?.call();
+    onLevelChanged?.call();
   }
 }

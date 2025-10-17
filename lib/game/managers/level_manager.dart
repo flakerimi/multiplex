@@ -27,6 +27,10 @@ class LevelManager {
     _currentLevelIndex = 0;
   }
 
+  void startNewGame() {
+    _currentLevelIndex = 0;
+  }
+
   bool get hasMoreLevels {
     if (_levelsData == null) return false;
     return _currentLevelIndex < _levelsData!.levels.length - 1;
