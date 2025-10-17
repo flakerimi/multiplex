@@ -19,6 +19,10 @@ class InputManager {
   VoidCallback? onOperatorPlaced;
   VoidCallback? onExtractorPlaced;
 
+  // Axis locking for belt placement
+  int? _dragStartGridX;
+  int? _dragStartGridY;
+
   // Getters for backward compatibility
   Tool get selectedTool => selectedToolNotifier.value;
   set selectedTool(Tool value) => selectedToolNotifier.value = value;
@@ -69,6 +73,16 @@ class InputManager {
     }
   }
 
+  void startDrag(int gridX, int gridY) {
+    _dragStartGridX = gridX;
+    _dragStartGridY = gridY;
+  }
+
+  void endDrag() {
+    _dragStartGridX = null;
+    _dragStartGridY = null;
+  }
+
   void handleTap(int gridX, int gridY, {bool isRightClick = false}) {
     // Don't place tiles if panning or zooming
     if (pressedKeys.contains(LogicalKeyboardKey.space) ||
@@ -77,21 +91,36 @@ class InputManager {
       return;
     }
 
+    // Apply axis locking for belt tool during drag
+    int finalGridX = gridX;
+    int finalGridY = gridY;
+
+    if (!isRightClick && selectedTool == Tool.belt && _dragStartGridX != null && _dragStartGridY != null) {
+      // For horizontal belts (left/right), lock Y coordinate
+      if (currentBeltDirection == BeltDirection.left || currentBeltDirection == BeltDirection.right) {
+        finalGridY = _dragStartGridY!;
+      }
+      // For vertical belts (up/down), lock X coordinate
+      else {
+        finalGridX = _dragStartGridX!;
+      }
+    }
+
     // Right click removes tiles (but not number tiles)
     if (isRightClick) {
-      final existingTile = tileManager.getTile(gridX, gridY);
+      final existingTile = tileManager.getTile(finalGridX, finalGridY);
       // Only remove belt, extractor, and operator tiles, not number tiles
       if (existingTile.type == TileType.belt || existingTile.type == TileType.extractor) {
-        tileManager.removeTile(gridX, gridY);
+        tileManager.removeTile(finalGridX, finalGridY);
       } else if (existingTile.type == TileType.operator) {
         // Remove all 3 tiles of the operator
-        _removeOperator(gridX, gridY, existingTile);
+        _removeOperator(finalGridX, finalGridY, existingTile);
       }
       return;
     }
 
     // Check if there's already a tile here
-    final existingTile = tileManager.getTile(gridX, gridY);
+    final existingTile = tileManager.getTile(finalGridX, finalGridY);
 
     // Place tile based on selected tool
     switch (selectedTool) {
@@ -100,7 +129,7 @@ class InputManager {
       case Tool.belt:
         // Can only place belt on empty tiles
         if (existingTile.type == TileType.empty) {
-          tileManager.placeBelt(gridX, gridY, currentBeltDirection);
+          tileManager.placeBelt(finalGridX, finalGridY, currentBeltDirection);
           onBeltPlaced?.call();
         }
         break;
@@ -108,32 +137,32 @@ class InputManager {
         // Can ONLY place extractor on number tiles (converts them to extractors)
         if (existingTile.type == TileType.number && existingTile.numberValue != null) {
           // Place extractor with the number value from the number tile
-          tileManager.placeExtractor(gridX, gridY, extractValue: existingTile.numberValue!);
+          tileManager.placeExtractor(finalGridX, finalGridY, extractValue: existingTile.numberValue!);
           onExtractorPlaced?.call();
         }
         break;
       case Tool.operatorAdd:
         // Can only place operator on empty tiles (and check 3-tile space)
-        if (_canPlaceOperator(gridX, gridY)) {
-          tileManager.placeOperator(gridX, gridY, OperatorType.add, currentOperatorDirection);
+        if (_canPlaceOperator(finalGridX, finalGridY)) {
+          tileManager.placeOperator(finalGridX, finalGridY, OperatorType.add, currentOperatorDirection);
           onOperatorPlaced?.call();
         }
         break;
       case Tool.operatorSubtract:
-        if (_canPlaceOperator(gridX, gridY)) {
-          tileManager.placeOperator(gridX, gridY, OperatorType.subtract, currentOperatorDirection);
+        if (_canPlaceOperator(finalGridX, finalGridY)) {
+          tileManager.placeOperator(finalGridX, finalGridY, OperatorType.subtract, currentOperatorDirection);
           onOperatorPlaced?.call();
         }
         break;
       case Tool.operatorMultiply:
-        if (_canPlaceOperator(gridX, gridY)) {
-          tileManager.placeOperator(gridX, gridY, OperatorType.multiply, currentOperatorDirection);
+        if (_canPlaceOperator(finalGridX, finalGridY)) {
+          tileManager.placeOperator(finalGridX, finalGridY, OperatorType.multiply, currentOperatorDirection);
           onOperatorPlaced?.call();
         }
         break;
       case Tool.operatorDivide:
-        if (_canPlaceOperator(gridX, gridY)) {
-          tileManager.placeOperator(gridX, gridY, OperatorType.divide, currentOperatorDirection);
+        if (_canPlaceOperator(finalGridX, finalGridY)) {
+          tileManager.placeOperator(finalGridX, finalGridY, OperatorType.divide, currentOperatorDirection);
           onOperatorPlaced?.call();
         }
         break;

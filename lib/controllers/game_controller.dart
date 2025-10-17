@@ -27,6 +27,10 @@ class GameController extends GetxController {
   Timer? _autoSaveTimer;
   bool _autoSaveEnabled = false;
 
+  // Background sync
+  bool _hasPendingSync = false;
+  Timer? _syncTimer;
+
   // Game stats tracking
   final RxInt currentLevel = 1.obs;
   final RxInt totalScore = 0.obs;
@@ -53,6 +57,7 @@ class GameController extends GetxController {
   @override
   void onClose() {
     stopAutoSave();
+    _stopBackgroundSync();
     achievementTracker.dispose();
     super.onClose();
   }
@@ -118,52 +123,26 @@ class GameController extends GetxController {
     return null;
   }
 
-  /// Save game progress to API
+  /// Save game progress locally and schedule background sync
   Future<bool> saveProgress({bool silent = false}) async {
-    if (isSaving.value) {
-      debugPrint('Save already in progress, skipping...');
-      return false;
-    }
-
-    isSaving.value = true;
     try {
       final progressData = _buildProgressData();
 
-      // Save to local storage first (always succeeds)
+      // Save to local storage immediately (fast, always succeeds)
       await storage.write(localStorageKey, jsonEncode(progressData));
+      currentProgress.value = progressData;
 
-      // Try to save to API
-      try {
-        await api.games.saveProgress(gameSlug, progressData);
-        currentProgress.value = progressData;
+      // Schedule background sync to API
+      _hasPendingSync = true;
+      _scheduleBackgroundSync();
 
-        if (!silent) {
-          Get.snackbar(
-            'Progress Saved',
-            'Your game progress has been saved successfully.',
-            snackPosition: SnackPosition.BOTTOM,
-            duration: const Duration(seconds: 2),
-          );
-        }
-
-        return true;
-      } catch (apiError) {
-        debugPrint('Failed to save to API: $apiError');
-
-        if (!silent) {
-          Get.snackbar(
-            'Saved Locally',
-            'Progress saved locally. Will sync when online.',
-            snackPosition: SnackPosition.BOTTOM,
-            duration: const Duration(seconds: 2),
-          );
-        }
-
-        // Still return true because we saved locally
-        return true;
+      if (!silent) {
+        debugPrint('Progress saved locally');
       }
+
+      return true;
     } catch (e) {
-      debugPrint('Failed to save progress: $e');
+      debugPrint('Failed to save progress locally: $e');
 
       if (!silent) {
         Get.snackbar(
@@ -176,8 +155,6 @@ class GameController extends GetxController {
       }
 
       return false;
-    } finally {
-      isSaving.value = false;
     }
   }
 
@@ -398,5 +375,39 @@ class GameController extends GetxController {
   Future<void> incrementStatAndCheck(String stat, [int amount = 1]) async {
     incrementStat(stat, amount);
     await checkAchievements();
+  }
+
+  /// Schedule background sync to run soon
+  void _scheduleBackgroundSync() {
+    // Cancel existing timer
+    _syncTimer?.cancel();
+
+    // Sync after 2 seconds of inactivity
+    _syncTimer = Timer(const Duration(seconds: 2), () {
+      _performBackgroundSync();
+    });
+  }
+
+  /// Perform background sync to API
+  Future<void> _performBackgroundSync() async {
+    if (!_hasPendingSync || currentProgress.value == null) {
+      return;
+    }
+
+    try {
+      debugPrint('Syncing progress to API...');
+      await api.games.saveProgress(gameSlug, currentProgress.value!);
+      _hasPendingSync = false;
+      debugPrint('Progress synced to API successfully');
+    } catch (e) {
+      debugPrint('Failed to sync to API: $e');
+      // Will retry on next save or auto-save
+    }
+  }
+
+  /// Stop background sync timer
+  void _stopBackgroundSync() {
+    _syncTimer?.cancel();
+    _syncTimer = null;
   }
 }

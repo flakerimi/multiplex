@@ -31,6 +31,15 @@ class LevelManager {
     _currentLevelIndex = 0;
   }
 
+  /// Set the current level by level number (1-indexed)
+  void setLevel(int levelNumber) {
+    final levelIndex = levelNumber - 1; // Convert to 0-indexed
+
+    if (_levelsData != null && levelIndex >= 0 && levelIndex < _levelsData!.levels.length) {
+      _currentLevelIndex = levelIndex;
+    }
+  }
+
   bool get hasMoreLevels {
     if (_levelsData == null) return false;
     return _currentLevelIndex < _levelsData!.levels.length - 1;

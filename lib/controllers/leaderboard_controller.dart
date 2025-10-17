@@ -109,7 +109,7 @@ class LeaderboardController extends GetxController {
   }
 
   int getScore(PlayerStats stats) {
-    return (stats.statsData['score'] as num?)?.toInt() ?? 0;
+    return (stats.statsData['total_score'] as num?)?.toInt() ?? 0;
   }
 
   int getLevelsCompleted(PlayerStats stats) {

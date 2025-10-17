@@ -72,13 +72,13 @@ class ProfileController extends GetxController {
     return profile.value?.stats.statsData ?? {};
   }
 
-  int get totalScore => stats['total_score'] as int? ?? 0;
-  int get levelsCompleted => stats['levels_completed'] as int? ?? 0;
-  int get tilesProcessed => stats['tiles_processed'] as int? ?? 0;
-  int get beltsPlaced => stats['belts_placed'] as int? ?? 0;
-  int get operatorsPlaced => stats['operators_placed'] as int? ?? 0;
-  int get extractorsPlaced => stats['extractors_placed'] as int? ?? 0;
-  int get totalPlaytimeSeconds => stats['total_playtime_seconds'] as int? ?? 0;
+  int get totalScore => (stats['total_score'] as num?)?.toInt() ?? 0;
+  int get levelsCompleted => (stats['levels_completed'] as num?)?.toInt() ?? 0;
+  int get tilesProcessed => (stats['tiles_processed'] as num?)?.toInt() ?? 0;
+  int get beltsPlaced => (stats['belts_placed'] as num?)?.toInt() ?? 0;
+  int get operatorsPlaced => (stats['operators_placed'] as num?)?.toInt() ?? 0;
+  int get extractorsPlaced => (stats['extractors_placed'] as num?)?.toInt() ?? 0;
+  int get totalPlaytimeSeconds => (stats['total_playtime_seconds'] as num?)?.toInt() ?? 0;
 
   String get formattedPlaytime {
     final hours = totalPlaytimeSeconds ~/ 3600;
