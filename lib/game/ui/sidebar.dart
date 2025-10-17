@@ -68,13 +68,76 @@ class Sidebar extends StatelessWidget {
           }),
           if (selectedTool == Tool.belt) ...[
             const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: onRotateBelt,
-              icon: const Icon(Icons.rotate_right),
-              label: const Text('Rotate (R)'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4A4A7C),
-                foregroundColor: Colors.white,
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF5A5A8C),
+                    Color(0xFF4A4A7C),
+                    Color(0xFF3A3A6C),
+                  ],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    offset: const Offset(0, 4),
+                    blurRadius: 8,
+                  ),
+                  BoxShadow(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    offset: const Offset(0, -2),
+                    blurRadius: 4,
+                  ),
+                ],
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  width: 1,
+                ),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: onRotateBelt,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.rotate_right,
+                          color: Colors.white,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black.withValues(alpha: 0.5),
+                              offset: const Offset(1, 1),
+                              blurRadius: 2,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Rotate (R)',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black.withValues(alpha: 0.5),
+                                offset: const Offset(1, 1),
+                                blurRadius: 2,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
           ],
@@ -115,16 +178,87 @@ class Sidebar extends StatelessWidget {
   }) {
     final isSelected = selectedTool == tool;
 
-    return ElevatedButton.icon(
-      onPressed: () => onToolSelected(tool),
-      icon: Icon(icon),
-      label: Text(label),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: isSelected
-            ? const Color(0xFF6C5CE7)
-            : const Color(0xFF4A4A7C),
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 16),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isSelected
+              ? [
+                  const Color(0xFF7C6CEF),
+                  const Color(0xFF6C5CE7),
+                  const Color(0xFF5B4CD6),
+                ]
+              : [
+                  const Color(0xFF5A5A8C),
+                  const Color(0xFF4A4A7C),
+                  const Color(0xFF3A3A6C),
+                ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isSelected
+                ? const Color(0xFF6C5CE7).withValues(alpha: 0.5)
+                : Colors.black.withValues(alpha: 0.3),
+            offset: const Offset(0, 4),
+            blurRadius: isSelected ? 12 : 8,
+            spreadRadius: isSelected ? 1 : 0,
+          ),
+          BoxShadow(
+            color: Colors.white.withValues(alpha: 0.1),
+            offset: const Offset(0, -2),
+            blurRadius: 4,
+          ),
+        ],
+        border: Border.all(
+          color: isSelected
+              ? const Color(0xFF8C7CEF).withValues(alpha: 0.6)
+              : Colors.white.withValues(alpha: 0.1),
+          width: isSelected ? 2 : 1,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => onToolSelected(tool),
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  color: Colors.white,
+                  shadows: [
+                    Shadow(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      offset: const Offset(1, 1),
+                      blurRadius: 2,
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                    fontSize: 14,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black.withValues(alpha: 0.5),
+                        offset: const Offset(1, 1),
+                        blurRadius: 2,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -133,27 +267,53 @@ class Sidebar extends StatelessWidget {
     Tool tool;
     String label;
     String symbol;
+    List<Color> gradientColors;
+    Color shadowColor;
 
     switch (operator.toLowerCase()) {
       case 'add':
         tool = Tool.operatorAdd;
         label = 'Add';
         symbol = '+';
+        gradientColors = [
+          const Color(0xFF66BB6A),
+          const Color(0xFF4CAF50),
+          const Color(0xFF388E3C),
+        ];
+        shadowColor = const Color(0xFF4CAF50);
         break;
       case 'subtract':
         tool = Tool.operatorSubtract;
         label = 'Subtract';
         symbol = '-';
+        gradientColors = [
+          const Color(0xFFEF5350),
+          const Color(0xFFF44336),
+          const Color(0xFFD32F2F),
+        ];
+        shadowColor = const Color(0xFFF44336);
         break;
       case 'multiply':
         tool = Tool.operatorMultiply;
         label = 'Multiply';
         symbol = '×';
+        gradientColors = [
+          const Color(0xFFFFB74D),
+          const Color(0xFFFF9800),
+          const Color(0xFFF57C00),
+        ];
+        shadowColor = const Color(0xFFFF9800);
         break;
       case 'divide':
         tool = Tool.operatorDivide;
         label = 'Divide';
         symbol = '÷';
+        gradientColors = [
+          const Color(0xFF4DD0E1),
+          const Color(0xFF00BCD4),
+          const Color(0xFF0097A7),
+        ];
+        shadowColor = const Color(0xFF00BCD4);
         break;
       default:
         return const SizedBox.shrink();
@@ -161,25 +321,97 @@ class Sidebar extends StatelessWidget {
 
     final isSelected = selectedTool == tool;
 
-    return ElevatedButton(
-      onPressed: () => onToolSelected(tool),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: isSelected
-            ? const Color(0xFFE74C3C) // Red highlight for operators
-            : const Color(0xFF8E44AD), // Purple for operators
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            symbol,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isSelected
+              ? gradientColors
+              : gradientColors.map((c) => c.withValues(alpha: 0.7)).toList(),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isSelected
+                ? shadowColor.withValues(alpha: 0.5)
+                : Colors.black.withValues(alpha: 0.3),
+            offset: const Offset(0, 4),
+            blurRadius: isSelected ? 12 : 8,
+            spreadRadius: isSelected ? 1 : 0,
           ),
-          const SizedBox(width: 8),
-          Text(label),
+          BoxShadow(
+            color: Colors.white.withValues(alpha: 0.1),
+            offset: const Offset(0, -2),
+            blurRadius: 4,
+          ),
         ],
+        border: Border.all(
+          color: isSelected
+              ? Colors.white.withValues(alpha: 0.4)
+              : Colors.white.withValues(alpha: 0.1),
+          width: isSelected ? 2 : 1,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => onToolSelected(tool),
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withValues(alpha: 0.2),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.3),
+                      width: 2,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      symbol,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black.withValues(alpha: 0.5),
+                            offset: const Offset(1, 1),
+                            blurRadius: 2,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                    fontSize: 14,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black.withValues(alpha: 0.5),
+                        offset: const Offset(1, 1),
+                        blurRadius: 2,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

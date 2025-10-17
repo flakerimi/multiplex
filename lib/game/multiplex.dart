@@ -67,8 +67,6 @@ class Multiplex extends FlameGame
   // Progress data to load after game initializes
   Map<String, dynamic>? _pendingProgressData;
 
-  // Track dragging state
-  bool _isRightClickDrag = false;
 
   Multiplex() {
     // Initialize managers in constructor so they're available immediately
@@ -358,7 +356,6 @@ class Multiplex extends FlameGame
   @override
   void onTapDown(TapDownInfo info) {
     super.onTapDown(info);
-    _isRightClickDrag = false; // Left button
 
     // Use widget position (relative to game widget) instead of global (includes title bar)
     final screenPos = info.eventPosition.widget;
@@ -375,7 +372,6 @@ class Multiplex extends FlameGame
   @override
   void onSecondaryTapDown(TapDownInfo info) {
     super.onSecondaryTapDown(info);
-    _isRightClickDrag = true; // Right button
 
     // Single right-click removal - always allowed
     if (!inputManager.isPanning && !inputManager.isZooming) {
@@ -396,18 +392,6 @@ class Multiplex extends FlameGame
     if (!inputManager.isPanning && !inputManager.isZooming) {
       return; // Ignore all pan events unless explicitly panning/zooming
     }
-  }
-
-  @override
-  void onPanEnd(DragEndInfo info) {
-    super.onPanEnd(info);
-    _isRightClickDrag = false;
-  }
-
-  @override
-  void onPanCancel() {
-    super.onPanCancel();
-    _isRightClickDrag = false;
   }
 
   @override

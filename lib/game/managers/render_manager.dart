@@ -179,21 +179,33 @@ class RenderManager {
     final tileSize = getTileSize();
     final gridOffset = getGridOffset();
 
+    final screenX = x * tileSize - gridOffset.x;
+    final screenY = y * tileSize - gridOffset.y;
+
+    // Draw shadow first for depth
+    if (tile.type != TileType.empty) {
+      final shadowPaint = Paint()
+        ..color = Colors.black.withValues(alpha: 0.2)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
+      canvas.drawRect(
+        Rect.fromLTWH(screenX + 2, screenY + 2, tileSize, tileSize),
+        shadowPaint,
+      );
+    }
+
+    // Main tile background
     final paint = Paint()
       ..color = tile.getColor()
       ..style = PaintingStyle.fill;
-
-    final screenX = x * tileSize - gridOffset.x;
-    final screenY = y * tileSize - gridOffset.y;
 
     canvas.drawRect(
       Rect.fromLTWH(screenX, screenY, tileSize, tileSize),
       paint,
     );
 
-    // Draw belt arrow
+    // Draw belt with realistic conveyor design
     if (tile.type == TileType.belt && tile.beltDirection != null) {
-      _drawBeltArrow(canvas, screenX, screenY, tile.beltDirection!);
+      _drawConveyorBelt(canvas, screenX, screenY, tile.beltDirection!, tileSize);
 
       // Draw carrying number on belt with smooth movement
       if (tile.carryingNumber != null) {
@@ -236,72 +248,177 @@ class RenderManager {
     }
   }
 
-  void _drawBeltArrow(Canvas canvas, double x, double y, BeltDirection direction) {
-    final tileSize = getTileSize();
-    final arrowPaint = Paint()
-      ..color = Colors.yellow
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.0;
-
+  void _drawConveyorBelt(Canvas canvas, double x, double y, BeltDirection direction, double tileSize) {
     final centerX = x + tileSize / 2;
     final centerY = y + tileSize / 2;
-    final arrowSize = tileSize * 0.3;
+    final isHorizontal = (direction == BeltDirection.left || direction == BeltDirection.right);
 
-    final path = Path();
-    switch (direction) {
-      case BeltDirection.right:
-        path.moveTo(centerX - arrowSize, centerY - arrowSize);
-        path.lineTo(centerX + arrowSize, centerY);
-        path.lineTo(centerX - arrowSize, centerY + arrowSize);
-        break;
-      case BeltDirection.left:
-        path.moveTo(centerX + arrowSize, centerY - arrowSize);
-        path.lineTo(centerX - arrowSize, centerY);
-        path.lineTo(centerX + arrowSize, centerY + arrowSize);
-        break;
-      case BeltDirection.down:
-        path.moveTo(centerX - arrowSize, centerY - arrowSize);
-        path.lineTo(centerX, centerY + arrowSize);
-        path.lineTo(centerX + arrowSize, centerY - arrowSize);
-        break;
-      case BeltDirection.up:
-        path.moveTo(centerX - arrowSize, centerY + arrowSize);
-        path.lineTo(centerX, centerY - arrowSize);
-        path.lineTo(centerX + arrowSize, centerY + arrowSize);
-        break;
+    // Draw conveyor belt with gradient and rails
+    final beltRect = Rect.fromLTWH(x, y, tileSize, tileSize);
+
+    // Gradient for 3D effect
+    final gradient = LinearGradient(
+      begin: isHorizontal ? Alignment.topCenter : Alignment.centerLeft,
+      end: isHorizontal ? Alignment.bottomCenter : Alignment.centerRight,
+      colors: [
+        Colors.grey[800]!,
+        Colors.grey[700]!,
+        Colors.grey[600]!,
+        Colors.grey[700]!,
+      ],
+      stops: const [0.0, 0.3, 0.7, 1.0],
+    );
+
+    final gradientPaint = Paint()
+      ..shader = gradient.createShader(beltRect);
+
+    canvas.drawRect(beltRect, gradientPaint);
+
+    // Draw side rails for realistic conveyor look
+    final railPaint = Paint()
+      ..color = Colors.grey[900]!
+      ..style = PaintingStyle.fill;
+
+    if (isHorizontal) {
+      // Top and bottom rails
+      canvas.drawRect(Rect.fromLTWH(x, y, tileSize, tileSize * 0.1), railPaint);
+      canvas.drawRect(Rect.fromLTWH(x, y + tileSize * 0.9, tileSize, tileSize * 0.1), railPaint);
+    } else {
+      // Left and right rails
+      canvas.drawRect(Rect.fromLTWH(x, y, tileSize * 0.1, tileSize), railPaint);
+      canvas.drawRect(Rect.fromLTWH(x + tileSize * 0.9, y, tileSize * 0.1, tileSize), railPaint);
     }
 
+    // Draw movement lines on belt
+    final linePaint = Paint()
+      ..color = Colors.grey[500]!.withValues(alpha: 0.4)
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke;
+
+    if (isHorizontal) {
+      for (double i = 0.2; i < 1.0; i += 0.15) {
+        canvas.drawLine(
+          Offset(x + tileSize * i, y + tileSize * 0.15),
+          Offset(x + tileSize * i, y + tileSize * 0.85),
+          linePaint,
+        );
+      }
+    } else {
+      for (double i = 0.2; i < 1.0; i += 0.15) {
+        canvas.drawLine(
+          Offset(x + tileSize * 0.15, y + tileSize * i),
+          Offset(x + tileSize * 0.85, y + tileSize * i),
+          linePaint,
+        );
+      }
+    }
+
+    // Draw directional arrow
+    final arrowPaint = Paint()
+      ..color = Colors.amber[400]!
+      ..style = PaintingStyle.fill
+      ..strokeWidth = 2.0;
+
+    final arrowSize = tileSize * 0.25;
+    final path = Path();
+
+    switch (direction) {
+      case BeltDirection.right:
+        path.moveTo(centerX - arrowSize * 0.8, centerY - arrowSize);
+        path.lineTo(centerX + arrowSize, centerY);
+        path.lineTo(centerX - arrowSize * 0.8, centerY + arrowSize);
+        path.lineTo(centerX - arrowSize * 0.3, centerY);
+        break;
+      case BeltDirection.left:
+        path.moveTo(centerX + arrowSize * 0.8, centerY - arrowSize);
+        path.lineTo(centerX - arrowSize, centerY);
+        path.lineTo(centerX + arrowSize * 0.8, centerY + arrowSize);
+        path.lineTo(centerX + arrowSize * 0.3, centerY);
+        break;
+      case BeltDirection.down:
+        path.moveTo(centerX - arrowSize, centerY - arrowSize * 0.8);
+        path.lineTo(centerX, centerY + arrowSize);
+        path.lineTo(centerX + arrowSize, centerY - arrowSize * 0.8);
+        path.lineTo(centerX, centerY - arrowSize * 0.3);
+        break;
+      case BeltDirection.up:
+        path.moveTo(centerX - arrowSize, centerY + arrowSize * 0.8);
+        path.lineTo(centerX, centerY - arrowSize);
+        path.lineTo(centerX + arrowSize, centerY + arrowSize * 0.8);
+        path.lineTo(centerX, centerY + arrowSize * 0.3);
+        break;
+    }
+    path.close();
+
+    // Draw arrow with glow effect
     canvas.drawPath(path, arrowPaint);
+
+    // Arrow outline for better visibility
+    final outlinePaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    canvas.drawPath(path, outlinePaint);
   }
 
   void _drawExtractorIcon(Canvas canvas, double x, double y, int? extractValue) {
     final tileSize = getTileSize();
-    final iconPaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.fill;
-
     final centerX = x + tileSize / 2;
     final centerY = y + tileSize / 2;
-    final iconSize = tileSize * 0.4;
+    final iconSize = tileSize * 0.35;
 
-    // Draw a simple circle for extractor
+    // Metallic gradient for industrial look
+    final gradient = RadialGradient(
+      colors: [
+        const Color(0xFF4CAF50),
+        const Color(0xFF2E7D32),
+        const Color(0xFF1B5E20),
+      ],
+      stops: const [0.0, 0.6, 1.0],
+    );
+
+    final iconPaint = Paint()
+      ..shader = gradient.createShader(
+        Rect.fromCircle(center: Offset(centerX, centerY), radius: iconSize),
+      );
+
+    // Draw main extractor circle
     canvas.drawCircle(Offset(centerX, centerY), iconSize, iconPaint);
 
-    // Draw border
-    final borderPaint = Paint()
-      ..color = Colors.black
+    // Draw metallic rim
+    final rimPaint = Paint()
+      ..color = Colors.grey[800]!
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
+      ..strokeWidth = 3.0;
+    canvas.drawCircle(Offset(centerX, centerY), iconSize, rimPaint);
 
-    canvas.drawCircle(Offset(centerX, centerY), iconSize, borderPaint);
+    // Draw inner gears/detail circles
+    final detailPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.3)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    canvas.drawCircle(Offset(centerX, centerY), iconSize * 0.6, detailPaint);
+    canvas.drawCircle(Offset(centerX, centerY), iconSize * 0.3, detailPaint);
 
     // Draw extract value if present
     if (extractValue != null) {
+      // Background circle for number
+      final numberBg = Paint()
+        ..color = Colors.white.withValues(alpha: 0.9);
+      canvas.drawCircle(Offset(centerX, centerY), iconSize * 0.5, numberBg);
+
       TextPaint(
         style: TextStyle(
-          color: Colors.black,
-          fontSize: tileSize * 0.3,
+          color: const Color(0xFF1B5E20),
+          fontSize: tileSize * 0.35,
           fontWeight: FontWeight.bold,
+          shadows: [
+            Shadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              offset: const Offset(1, 1),
+              blurRadius: 2,
+            ),
+          ],
         ),
       ).render(
         canvas,
@@ -411,27 +528,52 @@ class RenderManager {
     final centerY = y + tileSize / 2;
 
     String symbol;
+    Color symbolColor;
     switch (operatorType) {
       case OperatorType.add:
         symbol = '+';
+        symbolColor = const Color(0xFF4CAF50);
         break;
       case OperatorType.subtract:
         symbol = '-';
+        symbolColor = const Color(0xFFF44336);
         break;
       case OperatorType.multiply:
         symbol = '×';
+        symbolColor = const Color(0xFFFF9800);
         break;
       case OperatorType.divide:
         symbol = '÷';
+        symbolColor = const Color(0xFF00BCD4);
         break;
     }
 
-    // Draw operator symbol
+    // Draw background circle for operator
+    final bgSize = tileSize * 0.4;
+    final bgPaint = Paint()
+      ..color = symbolColor.withValues(alpha: 0.3);
+    canvas.drawCircle(Offset(centerX, centerY), bgSize, bgPaint);
+
+    // Draw outer ring
+    final ringPaint = Paint()
+      ..color = symbolColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.0;
+    canvas.drawCircle(Offset(centerX, centerY), bgSize, ringPaint);
+
+    // Draw operator symbol with shadow
     TextPaint(
       style: TextStyle(
         color: Colors.white,
-        fontSize: tileSize * 0.6,
+        fontSize: tileSize * 0.5,
         fontWeight: FontWeight.bold,
+        shadows: [
+          Shadow(
+            color: Colors.black.withValues(alpha: 0.5),
+            offset: const Offset(2, 2),
+            blurRadius: 3,
+          ),
+        ],
       ),
     ).render(
       canvas,
