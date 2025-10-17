@@ -195,9 +195,22 @@ class RenderManager {
     if (tile.type == TileType.belt && tile.beltDirection != null) {
       _drawBeltArrow(canvas, screenX, screenY, tile.beltDirection!);
 
-      // Draw carrying number on belt
+      // Draw carrying number on belt with smooth movement
       if (tile.carryingNumber != null) {
-        _drawNumberValue(canvas, screenX, screenY, tile.carryingNumber!);
+        // Calculate interpolated position if moving
+        double numberX = screenX;
+        double numberY = screenY;
+
+        if (tile.movementProgress > 0 && tile.movingToX != null && tile.movingToY != null) {
+          final destScreenX = tile.movingToX! * tileSize - gridOffset.x;
+          final destScreenY = tile.movingToY! * tileSize - gridOffset.y;
+
+          // Interpolate between current and destination position
+          numberX = screenX + (destScreenX - screenX) * tile.movementProgress;
+          numberY = screenY + (destScreenY - screenY) * tile.movementProgress;
+        }
+
+        _drawNumberValue(canvas, numberX, numberY, tile.carryingNumber!);
       }
     }
 
@@ -211,9 +224,15 @@ class RenderManager {
       _drawNumberValue(canvas, screenX, screenY, tile.numberValue!);
     }
 
-    // Draw operator symbol
-    if (tile.type == TileType.operator && tile.operatorType != null) {
+    // Draw operator symbol (only on origin/center tile)
+    if (tile.type == TileType.operator && tile.operatorType != null && tile.isOrigin) {
       _drawOperatorSymbol(canvas, screenX, screenY, tile.operatorType!);
+
+      // Draw carrying number if operator has output
+      if (tile.carryingNumber != null) {
+        // Draw the output number slightly below the operator symbol
+        _drawNumberValue(canvas, screenX, screenY + tileSize * 0.4, tile.carryingNumber!);
+      }
     }
   }
 

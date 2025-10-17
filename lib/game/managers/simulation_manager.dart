@@ -8,11 +8,10 @@ class SimulationManager {
 
   // Simulation timers
   double _extractorSpawnTimer = 0.0;
-  double _beltMoveTimer = 0.0;
   double _operatorProcessTimer = 0.0;
 
   static const double extractorSpawnInterval = 1.0; // Spawn every 1 second
-  static const double beltMoveInterval = 0.5; // Move every 0.5 seconds
+  static const double beltMoveSpeed = 2.0; // Moves per second (completes move in 0.5s)
   static const double operatorProcessInterval = 0.5; // Process every 0.5 seconds
 
   // Callback for when a number is delivered to factory
@@ -29,12 +28,8 @@ class SimulationManager {
       _spawnFromExtractors();
     }
 
-    // Update belt movement timer
-    _beltMoveTimer += dt;
-    if (_beltMoveTimer >= beltMoveInterval) {
-      _beltMoveTimer = 0.0;
-      _moveBelts();
-    }
+    // Update belt movement every frame (smooth animation)
+    _updateBeltMovement(dt);
 
     // Update operator processing timer
     _operatorProcessTimer += dt;
@@ -80,8 +75,134 @@ class SimulationManager {
     }
   }
 
+  /// Update belt movement with smooth animation
+  void _updateBeltMovement(double dt) {
+    // Get all belt tiles carrying numbers or animating
+    final belts = tileManager.tiles.entries.where((entry) {
+      return entry.value.type == TileType.belt &&
+             (entry.value.carryingNumber != null || entry.value.movementProgress > 0);
+    }).toList();
+
+    for (final beltEntry in belts) {
+      final coords = beltEntry.key.split(',');
+      final beltX = int.parse(coords[0]);
+      final beltY = int.parse(coords[1]);
+      final belt = beltEntry.value;
+
+      // If belt has movement in progress, update it
+      if (belt.movementProgress > 0 && belt.movingToX != null && belt.movingToY != null) {
+        final newProgress = (belt.movementProgress + dt * beltMoveSpeed).clamp(0.0, 1.0);
+
+        if (newProgress >= 1.0) {
+          // Movement complete - transfer number to destination
+          _completeBeltMove(beltX, beltY, belt);
+        } else {
+          // Update progress
+          tileManager.setTile(beltX, beltY, belt.copyWith(movementProgress: newProgress));
+        }
+      }
+      // If belt has a number but no movement, try to start movement
+      else if (belt.carryingNumber != null && belt.movementProgress == 0) {
+        _startBeltMove(beltX, beltY, belt);
+      }
+    }
+
+    // Start new pickups for belts without numbers
+    _pickupFromSources();
+  }
+
+  void _startBeltMove(int beltX, int beltY, Tile belt) {
+    if (belt.beltDirection == null) return;
+
+    // Get destination position
+    final destOffset = _getDirectionOffset(belt.beltDirection!);
+    final destX = beltX + destOffset[0];
+    final destY = beltY + destOffset[1];
+    final destTile = tileManager.getTile(destX, destY);
+
+    // Check if destination can receive the number
+    bool canMove = false;
+
+    if (destTile.type == TileType.belt && destTile.carryingNumber == null && destTile.movementProgress == 0) {
+      canMove = true;
+    } else if (destTile.type == TileType.factory) {
+      canMove = true;
+    } else if (destTile.type == TileType.operator && !destTile.isOrigin && destTile.carryingNumber == null) {
+      canMove = true;
+    }
+
+    if (canMove) {
+      // Start movement animation
+      tileManager.setTile(beltX, beltY, belt.copyWith(
+        movementProgress: 0.01, // Start animation
+        movingToX: destX,
+        movingToY: destY,
+      ));
+    }
+  }
+
+  void _completeBeltMove(int beltX, int beltY, Tile belt) {
+    final destX = belt.movingToX!;
+    final destY = belt.movingToY!;
+    final destTile = tileManager.getTile(destX, destY);
+
+    // Transfer number to destination
+    if (destTile.type == TileType.belt) {
+      tileManager.setTile(destX, destY, destTile.copyWith(carryingNumber: belt.carryingNumber));
+    } else if (destTile.type == TileType.factory) {
+      onFactoryDelivery?.call(belt.carryingNumber!);
+    } else if (destTile.type == TileType.operator) {
+      tileManager.setTile(destX, destY, destTile.copyWith(carryingNumber: belt.carryingNumber));
+    }
+
+    // Clear source belt
+    tileManager.setTile(beltX, beltY, belt.copyWith(
+      clearCarrying: true,
+      clearMovement: true,
+    ));
+  }
+
+  void _pickupFromSources() {
+    final belts = tileManager.tiles.entries.where((entry) {
+      return entry.value.type == TileType.belt &&
+             entry.value.carryingNumber == null &&
+             entry.value.movementProgress == 0;
+    }).toList();
+
+    for (final beltEntry in belts) {
+      final coords = beltEntry.key.split(',');
+      final beltX = int.parse(coords[0]);
+      final beltY = int.parse(coords[1]);
+      final belt = beltEntry.value;
+
+      if (belt.beltDirection == null) continue;
+
+      // Get source position (opposite of belt direction)
+      final sourceOffset = _getOppositeDirectionOffset(belt.beltDirection!);
+      final sourceX = beltX + sourceOffset[0];
+      final sourceY = beltY + sourceOffset[1];
+      final sourceTile = tileManager.getTile(sourceX, sourceY);
+
+      // Pick up from belts or operators that have numbers and aren't moving
+      if (sourceTile.type == TileType.belt &&
+          sourceTile.carryingNumber != null &&
+          sourceTile.movementProgress == 0) {
+        tileManager.setTile(beltX, beltY, belt.copyWith(carryingNumber: sourceTile.carryingNumber));
+        tileManager.setTile(sourceX, sourceY, sourceTile.copyWith(clearCarrying: true));
+        break; // Only pick up once
+      } else if (sourceTile.type == TileType.operator &&
+                 sourceTile.isOrigin &&
+                 sourceTile.carryingNumber != null) {
+        tileManager.setTile(beltX, beltY, belt.copyWith(carryingNumber: sourceTile.carryingNumber));
+        tileManager.setTile(sourceX, sourceY, sourceTile.copyWith(clearCarrying: true));
+        break; // Only pick up once
+      }
+    }
+  }
+
+  /// OLD DISCRETE MOVEMENT METHOD - REPLACED BY SMOOTH ANIMATION ABOVE
   /// Move numbers along belts and deliver to factory/operators
-  void _moveBelts() {
+  void _moveBeltsOld() {
     // Get all belt tiles
     final belts = tileManager.tiles.entries.where((entry) {
       return entry.value.type == TileType.belt;
