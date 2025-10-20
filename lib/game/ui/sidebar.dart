@@ -41,22 +41,15 @@ class Sidebar extends StatelessWidget {
           const SizedBox(height: 16),
           _buildToolButton(
             context,
-            icon: Icons.pan_tool,
-            label: 'Pan (1)',
-            tool: Tool.none,
-          ),
-          const SizedBox(height: 8),
-          _buildToolButton(
-            context,
             icon: Icons.trending_flat,
-            label: 'Belt (2)',
+            label: 'Belt (B)',
             tool: Tool.belt,
           ),
           const SizedBox(height: 8),
           _buildToolButton(
             context,
             icon: Icons.source,
-            label: 'Extractor (3)',
+            label: 'Extractor (E)',
             tool: Tool.extractor,
           ),
           // Show unlocked operators
@@ -159,7 +152,7 @@ class Sidebar extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Space + Drag: Pan\nShift + Drag: Zoom\nScroll: Zoom',
+            'B: Belt Tool\nE: Extractor Tool\nR: Rotate Belt\n\nSpace + Drag: Pan\nShift + Drag: Zoom\nScroll: Zoom',
             style: TextStyle(
               color: Colors.white60,
               fontSize: 12,
@@ -417,14 +410,14 @@ class Sidebar extends StatelessWidget {
   }
 
   Widget _buildToolPreview() {
-    String toolName = 'None';
+    String toolName = 'No Tool';
     String directionText = '';
     IconData? icon;
 
     switch (selectedTool) {
       case Tool.none:
-        toolName = 'Pan Mode';
-        icon = Icons.pan_tool;
+        toolName = 'No Tool Selected';
+        icon = Icons.mouse;
         break;
       case Tool.belt:
         toolName = 'Belt';

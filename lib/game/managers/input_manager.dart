@@ -42,8 +42,14 @@ class InputManager {
   void handleKeyDown(LogicalKeyboardKey key) {
     pressedKeys.add(key);
 
-    // Tool selection
-    if (key == LogicalKeyboardKey.digit1) {
+    // Tool selection with letters
+    if (key == LogicalKeyboardKey.keyB) {
+      selectedTool = Tool.belt;
+    } else if (key == LogicalKeyboardKey.keyE) {
+      selectedTool = Tool.extractor;
+    }
+    // Legacy number shortcuts
+    else if (key == LogicalKeyboardKey.digit1) {
       selectedTool = Tool.none;
     } else if (key == LogicalKeyboardKey.digit2) {
       selectedTool = Tool.belt;
