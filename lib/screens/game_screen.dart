@@ -173,24 +173,30 @@ class GameScreen extends StatelessWidget {
 
                   final startX = game.inputManager.dragStartGridX!;
                   final startY = game.inputManager.dragStartGridY!;
+                  final dx = gridX - startX;
+                  final dy = gridY - startY;
 
-                  // On first movement, detect direction
-                  if (screenController.beltPreviewDirection.value == null) {
-                    final dx = gridX - startX;
-                    final dy = gridY - startY;
+                  // Detect direction based on current position relative to start
+                  // Determine if movement is more horizontal or vertical
+                  bool isHorizontal = screenController.beltPreviewDirection.value == BeltDirection.left ||
+                                      screenController.beltPreviewDirection.value == BeltDirection.right;
 
-                    // Only detect direction if we've moved
-                    if (dx.abs() > 0 || dy.abs() > 0) {
-                      BeltDirection detectedDirection;
-                      if (dx.abs() > dy.abs()) {
-                        // Horizontal movement
-                        detectedDirection = dx > 0 ? BeltDirection.right : BeltDirection.left;
-                      } else {
-                        // Vertical movement
-                        detectedDirection = dy > 0 ? BeltDirection.down : BeltDirection.up;
-                      }
-                      screenController.beltPreviewDirection.value = detectedDirection;
+                  // On first movement, detect axis (horizontal vs vertical)
+                  if (screenController.beltPreviewDirection.value == null && (dx.abs() > 0 || dy.abs() > 0)) {
+                    isHorizontal = dx.abs() > dy.abs();
+                  }
+
+                  // Update direction based on current position relative to start
+                  if (dx.abs() > 0 || dy.abs() > 0) {
+                    BeltDirection detectedDirection;
+                    if (isHorizontal) {
+                      // Horizontal movement - direction based on which side of start we are
+                      detectedDirection = dx >= 0 ? BeltDirection.right : BeltDirection.left;
+                    } else {
+                      // Vertical movement - direction based on which side of start we are
+                      detectedDirection = dy >= 0 ? BeltDirection.down : BeltDirection.up;
                     }
+                    screenController.beltPreviewDirection.value = detectedDirection;
                   }
 
                   // Lock to axis based on detected direction
