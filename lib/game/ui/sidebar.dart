@@ -59,7 +59,7 @@ class Sidebar extends StatelessWidget {
               child: _buildOperatorButton(context, op),
             );
           }),
-          if (selectedTool == Tool.belt) ...[
+          if (selectedTool == Tool.belt || _isOperatorTool(selectedTool)) ...[
             const SizedBox(height: 16),
             Container(
               decoration: BoxDecoration(
@@ -515,5 +515,12 @@ class Sidebar extends StatelessWidget {
       case BeltDirection.right:
         return 'Direction: → Right';
     }
+  }
+
+  bool _isOperatorTool(Tool tool) {
+    return tool == Tool.operatorAdd ||
+           tool == Tool.operatorSubtract ||
+           tool == Tool.operatorMultiply ||
+           tool == Tool.operatorDivide;
   }
 }

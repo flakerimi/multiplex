@@ -331,7 +331,11 @@ class GameScreen extends StatelessWidget {
                               game.inputManager.selectedTool = tool;
                             },
                             onRotateBelt: () {
-                              game.inputManager.rotateBeltDirection();
+                              if (selectedTool == Tool.belt) {
+                                game.inputManager.rotateBeltDirection();
+                              } else if (_isOperatorTool(selectedTool)) {
+                                game.inputManager.rotateOperatorDirection();
+                              }
                             },
                           );
                         },
@@ -490,6 +494,13 @@ class GameScreen extends StatelessWidget {
         snackPosition: SnackPosition.BOTTOM,
       );
     }
+  }
+
+  bool _isOperatorTool(Tool tool) {
+    return tool == Tool.operatorAdd ||
+           tool == Tool.operatorSubtract ||
+           tool == Tool.operatorMultiply ||
+           tool == Tool.operatorDivide;
   }
 }
 

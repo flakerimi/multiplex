@@ -56,10 +56,21 @@ class InputManager {
     } else if (key == LogicalKeyboardKey.digit3) {
       selectedTool = Tool.extractor;
     }
-    // Belt direction rotation with R key
+    // Rotation with R key (belt or operator depending on selected tool)
     else if (key == LogicalKeyboardKey.keyR) {
-      rotateBeltDirection();
+      if (selectedTool == Tool.belt) {
+        rotateBeltDirection();
+      } else if (_isOperatorTool(selectedTool)) {
+        rotateOperatorDirection();
+      }
     }
+  }
+
+  bool _isOperatorTool(Tool tool) {
+    return tool == Tool.operatorAdd ||
+           tool == Tool.operatorSubtract ||
+           tool == Tool.operatorMultiply ||
+           tool == Tool.operatorDivide;
   }
 
   void handleKeyUp(LogicalKeyboardKey key) {
@@ -79,6 +90,20 @@ class InputManager {
         break;
       case BeltDirection.up:
         currentBeltDirection = BeltDirection.right;
+        break;
+    }
+  }
+
+  void rotateOperatorDirection() {
+    // Toggle between horizontal (right/left) and vertical (down/up)
+    switch (currentOperatorDirection) {
+      case BeltDirection.right:
+      case BeltDirection.left:
+        currentOperatorDirection = BeltDirection.down;
+        break;
+      case BeltDirection.down:
+      case BeltDirection.up:
+        currentOperatorDirection = BeltDirection.right;
         break;
     }
   }

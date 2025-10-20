@@ -51,6 +51,12 @@ class RenderManager {
     final tileSize = getTileSize();
     final gridOffset = getGridOffset();
 
+    // For operators, draw the 3-tile layout
+    if (tile.type == TileType.operator && tile.operatorType != null) {
+      _drawOperatorLayout(canvas, x, y, tile);
+      return;
+    }
+
     final paint = Paint()
       ..color = tile.getColor()
       ..style = PaintingStyle.fill;
@@ -236,16 +242,154 @@ class RenderManager {
       _drawNumberValue(canvas, screenX, screenY, tile.numberValue!);
     }
 
-    // Draw operator symbol (only on origin/center tile)
-    if (tile.type == TileType.operator && tile.operatorType != null && tile.isOrigin) {
-      _drawOperatorSymbol(canvas, screenX, screenY, tile.operatorType!);
+  }
 
-      // Draw carrying number if operator has output
+  void _drawOperatorLayout(Canvas canvas, int x, int y, Tile tile) {
+    final tileSize = getTileSize();
+    final gridOffset = getGridOffset();
+    final isHorizontal = tile.width == 3;
+
+    // Get operator colors
+    Color operatorColor;
+    String symbol;
+    switch (tile.operatorType!) {
+      case OperatorType.add:
+        operatorColor = const Color(0xFF4CAF50);
+        symbol = '+';
+        break;
+      case OperatorType.subtract:
+        operatorColor = const Color(0xFFF44336);
+        symbol = '-';
+        break;
+      case OperatorType.multiply:
+        operatorColor = const Color(0xFFFF9800);
+        symbol = '×';
+        break;
+      case OperatorType.divide:
+        operatorColor = const Color(0xFF00BCD4);
+        symbol = '÷';
+        break;
+    }
+
+    if (isHorizontal) {
+      // Horizontal layout: | A | + | B |
+      // Draw left tile (input A)
+      final leftX = (x - 1) * tileSize - gridOffset.x;
+      final leftY = y * tileSize - gridOffset.y;
+      _drawOperatorSection(canvas, leftX, leftY, 'A', Colors.blue[300]!, operatorColor);
+
+      // Draw center tile (operator symbol)
+      final centerX = x * tileSize - gridOffset.x;
+      final centerY = y * tileSize - gridOffset.y;
+      _drawOperatorSection(canvas, centerX, centerY, symbol, operatorColor, operatorColor, isSymbol: true);
+
+      // Draw right tile (input B)
+      final rightX = (x + 1) * tileSize - gridOffset.x;
+      final rightY = y * tileSize - gridOffset.y;
+      _drawOperatorSection(canvas, rightX, rightY, 'B', Colors.purple[300]!, operatorColor);
+
+      // Draw output number if present
       if (tile.carryingNumber != null) {
-        // Draw the output number slightly below the operator symbol
-        _drawNumberValue(canvas, screenX, screenY + tileSize * 0.4, tile.carryingNumber!);
+        _drawNumberValue(canvas, centerX, centerY + tileSize * 0.7, tile.carryingNumber!);
+      }
+    } else {
+      // Vertical layout
+      // Draw top tile (input A)
+      final topX = x * tileSize - gridOffset.x;
+      final topY = (y - 1) * tileSize - gridOffset.y;
+      _drawOperatorSection(canvas, topX, topY, 'A', Colors.blue[300]!, operatorColor);
+
+      // Draw center tile (operator symbol)
+      final centerX = x * tileSize - gridOffset.x;
+      final centerY = y * tileSize - gridOffset.y;
+      _drawOperatorSection(canvas, centerX, centerY, symbol, operatorColor, operatorColor, isSymbol: true);
+
+      // Draw bottom tile (input B)
+      final bottomX = x * tileSize - gridOffset.x;
+      final bottomY = (y + 1) * tileSize - gridOffset.y;
+      _drawOperatorSection(canvas, bottomX, bottomY, 'B', Colors.purple[300]!, operatorColor);
+
+      // Draw output number if present
+      if (tile.carryingNumber != null) {
+        _drawNumberValue(canvas, centerX + tileSize * 0.7, centerY, tile.carryingNumber!);
       }
     }
+  }
+
+  void _drawOperatorSection(
+    Canvas canvas,
+    double x,
+    double y,
+    String label,
+    Color bgColor,
+    Color borderColor, {
+    bool isSymbol = false,
+  }) {
+    final tileSize = getTileSize();
+
+    // Draw background with gradient
+    final gradient = LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [
+        bgColor.withValues(alpha: 0.9),
+        bgColor.withValues(alpha: 0.7),
+      ],
+    );
+
+    final bgPaint = Paint()
+      ..shader = gradient.createShader(Rect.fromLTWH(x, y, tileSize, tileSize));
+    canvas.drawRect(Rect.fromLTWH(x, y, tileSize, tileSize), bgPaint);
+
+    // Draw border
+    final borderPaint = Paint()
+      ..color = borderColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.0;
+    canvas.drawRect(Rect.fromLTWH(x, y, tileSize, tileSize), borderPaint);
+
+    // Draw dividers (pipes |)
+    final dividerPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.3)
+      ..strokeWidth = 2.0;
+
+    // Left divider
+    canvas.drawLine(
+      Offset(x, y),
+      Offset(x, y + tileSize),
+      dividerPaint,
+    );
+
+    // Right divider
+    canvas.drawLine(
+      Offset(x + tileSize, y),
+      Offset(x + tileSize, y + tileSize),
+      dividerPaint,
+    );
+
+    // Draw label
+    final centerX = x + tileSize / 2;
+    final centerY = y + tileSize / 2;
+
+    TextPaint(
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: isSymbol ? tileSize * 0.6 : tileSize * 0.5,
+        fontWeight: FontWeight.bold,
+        shadows: [
+          Shadow(
+            color: Colors.black.withValues(alpha: 0.5),
+            offset: const Offset(2, 2),
+            blurRadius: 3,
+          ),
+        ],
+      ),
+    ).render(
+      canvas,
+      label,
+      Vector2(centerX, centerY),
+      anchor: Anchor.center,
+    );
   }
 
   void _drawConveyorBelt(Canvas canvas, double x, double y, BeltDirection direction, double tileSize) {
@@ -522,64 +666,4 @@ class RenderManager {
     );
   }
 
-  void _drawOperatorSymbol(Canvas canvas, double x, double y, OperatorType operatorType) {
-    final tileSize = getTileSize();
-    final centerX = x + tileSize / 2;
-    final centerY = y + tileSize / 2;
-
-    String symbol;
-    Color symbolColor;
-    switch (operatorType) {
-      case OperatorType.add:
-        symbol = '+';
-        symbolColor = const Color(0xFF4CAF50);
-        break;
-      case OperatorType.subtract:
-        symbol = '-';
-        symbolColor = const Color(0xFFF44336);
-        break;
-      case OperatorType.multiply:
-        symbol = '×';
-        symbolColor = const Color(0xFFFF9800);
-        break;
-      case OperatorType.divide:
-        symbol = '÷';
-        symbolColor = const Color(0xFF00BCD4);
-        break;
-    }
-
-    // Draw background circle for operator
-    final bgSize = tileSize * 0.4;
-    final bgPaint = Paint()
-      ..color = symbolColor.withValues(alpha: 0.3);
-    canvas.drawCircle(Offset(centerX, centerY), bgSize, bgPaint);
-
-    // Draw outer ring
-    final ringPaint = Paint()
-      ..color = symbolColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.0;
-    canvas.drawCircle(Offset(centerX, centerY), bgSize, ringPaint);
-
-    // Draw operator symbol with shadow
-    TextPaint(
-      style: TextStyle(
-        color: Colors.white,
-        fontSize: tileSize * 0.5,
-        fontWeight: FontWeight.bold,
-        shadows: [
-          Shadow(
-            color: Colors.black.withValues(alpha: 0.5),
-            offset: const Offset(2, 2),
-            blurRadius: 3,
-          ),
-        ],
-      ),
-    ).render(
-      canvas,
-      symbol,
-      Vector2(centerX, centerY),
-      anchor: Anchor.center,
-    );
-  }
 }
