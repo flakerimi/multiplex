@@ -321,33 +321,38 @@ class GameScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  // Use ValueListenableBuilder to reactively update sidebar when state changes
-                  ValueListenableBuilder<BeltDirection>(
-                    valueListenable: game.inputManager.currentBeltDirectionNotifier,
-                    builder: (context, beltDirection, child) {
-                      return ValueListenableBuilder<BeltDirection>(
-                        valueListenable: game.inputManager.currentOperatorDirectionNotifier,
-                        builder: (context, operatorDirection, child) {
-                          return Sidebar(
-                            selectedTool: selectedTool,
-                            beltDirection: beltDirection,
-                            operatorDirection: operatorDirection,
-                            unlockedOperators: game.levelManager.currentLevel?.unlockedOperators ?? [],
-                            onToolSelected: (tool) {
-                              game.inputManager.selectedTool = tool;
-                            },
-                            onRotateBelt: () {
-                              if (selectedTool == Tool.belt) {
-                                game.inputManager.rotateBeltDirection();
-                              } else if (_isOperatorTool(selectedTool)) {
-                                game.inputManager.rotateOperatorDirection();
-                              }
-                            },
-                          );
-                        },
-                      );
-                    },
-                  ),
+                  // Use Obx to reactively update sidebar when level or directions change
+                  Obx(() {
+                    // Access reactive values to trigger rebuilds
+                    final _ = game.levelManager.currentLevelIndexRx.value;
+
+                    return ValueListenableBuilder<BeltDirection>(
+                      valueListenable: game.inputManager.currentBeltDirectionNotifier,
+                      builder: (context, beltDirection, child) {
+                        return ValueListenableBuilder<BeltDirection>(
+                          valueListenable: game.inputManager.currentOperatorDirectionNotifier,
+                          builder: (context, operatorDirection, child) {
+                            return Sidebar(
+                              selectedTool: selectedTool,
+                              beltDirection: beltDirection,
+                              operatorDirection: operatorDirection,
+                              unlockedOperators: game.levelManager.currentLevel?.unlockedOperators ?? [],
+                              onToolSelected: (tool) {
+                                game.inputManager.selectedTool = tool;
+                              },
+                              onRotateBelt: () {
+                                if (selectedTool == Tool.belt) {
+                                  game.inputManager.rotateBeltDirection();
+                                } else if (_isOperatorTool(selectedTool)) {
+                                  game.inputManager.rotateOperatorDirection();
+                                }
+                              },
+                            );
+                          },
+                        );
+                      },
+                    );
+                  }),
                 ],
               ),
             ),
