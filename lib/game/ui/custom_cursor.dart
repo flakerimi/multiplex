@@ -26,15 +26,43 @@ class CustomCursor extends StatelessWidget {
     }
 
     final cursorSize = size ?? 64.0; // Default to 64 if not provided
-    final halfSize = cursorSize / 2;
+
+    // For operators, we need to center the middle tile of the 3-tile preview
+    double leftOffset;
+    double topOffset;
+
+    if (_isOperatorTool(selectedTool)) {
+      final isHorizontal = operatorDirection == BeltDirection.right || operatorDirection == BeltDirection.left;
+      if (isHorizontal) {
+        // For horizontal operators (A | + | B), center the middle tile
+        leftOffset = position.dx - (cursorSize * 1.5); // Center middle tile horizontally
+        topOffset = position.dy - (cursorSize / 2); // Center single tile vertically
+      } else {
+        // For vertical operators, center the middle tile
+        leftOffset = position.dx - (cursorSize / 2); // Center single tile horizontally
+        topOffset = position.dy - (cursorSize * 1.5); // Center middle tile vertically
+      }
+    } else {
+      // For single-tile tools (belt, extractor), center normally
+      final halfSize = cursorSize / 2;
+      leftOffset = position.dx - halfSize;
+      topOffset = position.dy - halfSize;
+    }
 
     return Positioned(
-      left: position.dx - halfSize, // Center the cursor
-      top: position.dy - halfSize,
+      left: leftOffset,
+      top: topOffset,
       child: IgnorePointer(
         child: _buildCursorWidget(cursorSize),
       ),
     );
+  }
+
+  bool _isOperatorTool(Tool tool) {
+    return tool == Tool.operatorAdd ||
+           tool == Tool.operatorSubtract ||
+           tool == Tool.operatorMultiply ||
+           tool == Tool.operatorDivide;
   }
 
   Widget _buildCursorWidget(double cursorSize) {
@@ -90,14 +118,18 @@ class CustomCursor extends StatelessWidget {
     final operatorColor = _getOperatorColor();
     final symbol = _getOperatorSymbol();
 
+    // Use slightly darker/lighter shades for A and B sections (matching render_manager)
+    final lightColor = Color.lerp(operatorColor, Colors.white, 0.3)!;
+    final darkColor = Color.lerp(operatorColor, Colors.black, 0.2)!;
+
     if (isHorizontal) {
       // Horizontal layout: | A | + | B |
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _buildOperatorSection(cursorSize, 'A', Colors.blue[300]!, operatorColor),
+          _buildOperatorSection(cursorSize, 'A', lightColor, operatorColor),
           _buildOperatorSection(cursorSize, symbol, operatorColor, operatorColor, isSymbol: true),
-          _buildOperatorSection(cursorSize, 'B', Colors.purple[300]!, operatorColor),
+          _buildOperatorSection(cursorSize, 'B', darkColor, operatorColor),
         ],
       );
     } else {
@@ -105,9 +137,9 @@ class CustomCursor extends StatelessWidget {
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _buildOperatorSection(cursorSize, 'A', Colors.blue[300]!, operatorColor),
+          _buildOperatorSection(cursorSize, 'A', lightColor, operatorColor),
           _buildOperatorSection(cursorSize, symbol, operatorColor, operatorColor, isSymbol: true),
-          _buildOperatorSection(cursorSize, 'B', Colors.purple[300]!, operatorColor),
+          _buildOperatorSection(cursorSize, 'B', darkColor, operatorColor),
         ],
       );
     }
@@ -138,13 +170,13 @@ class CustomCursor extends StatelessWidget {
   Color _getOperatorColor() {
     switch (selectedTool) {
       case Tool.operatorAdd:
-        return const Color(0xFF4CAF50);
+        return const Color(0xFF4CAF50); // Green
       case Tool.operatorSubtract:
-        return const Color(0xFFF44336);
+        return const Color(0xFFF44336); // Red
       case Tool.operatorMultiply:
-        return const Color(0xFFFF9800);
+        return const Color(0xFF9C27B0); // Purple
       case Tool.operatorDivide:
-        return const Color(0xFF00BCD4);
+        return const Color(0xFF00BCD4); // Cyan
       default:
         return Colors.grey;
     }
