@@ -6,6 +6,7 @@ class CustomCursor extends StatelessWidget {
   final Offset position;
   final Tool selectedTool;
   final BeltDirection beltDirection;
+  final BeltDirection operatorDirection;
   final double? size;
 
   const CustomCursor({
@@ -13,6 +14,7 @@ class CustomCursor extends StatelessWidget {
     required this.position,
     required this.selectedTool,
     required this.beltDirection,
+    required this.operatorDirection,
     this.size,
   });
 
@@ -77,40 +79,72 @@ class CustomCursor extends StatelessWidget {
       case Tool.operatorSubtract:
       case Tool.operatorMultiply:
       case Tool.operatorDivide:
-        return Container(
-          width: cursorSize,
-          height: cursorSize,
-          decoration: BoxDecoration(
-            color: _getOperatorColor().withValues(alpha: 0.6),
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: Colors.white, width: 2),
-          ),
-          child: Center(
-            child: Text(
-              _getOperatorSymbol(),
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: cursorSize * 0.5,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        );
+        return _buildOperatorPreview(cursorSize);
       case Tool.none:
         return const SizedBox.shrink();
     }
   }
 
+  Widget _buildOperatorPreview(double cursorSize) {
+    final isHorizontal = operatorDirection == BeltDirection.right || operatorDirection == BeltDirection.left;
+    final operatorColor = _getOperatorColor();
+    final symbol = _getOperatorSymbol();
+
+    if (isHorizontal) {
+      // Horizontal layout: | A | + | B |
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildOperatorSection(cursorSize, 'A', Colors.blue[300]!, operatorColor),
+          _buildOperatorSection(cursorSize, symbol, operatorColor, operatorColor, isSymbol: true),
+          _buildOperatorSection(cursorSize, 'B', Colors.purple[300]!, operatorColor),
+        ],
+      );
+    } else {
+      // Vertical layout
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildOperatorSection(cursorSize, 'A', Colors.blue[300]!, operatorColor),
+          _buildOperatorSection(cursorSize, symbol, operatorColor, operatorColor, isSymbol: true),
+          _buildOperatorSection(cursorSize, 'B', Colors.purple[300]!, operatorColor),
+        ],
+      );
+    }
+  }
+
+  Widget _buildOperatorSection(double size, String label, Color bgColor, Color borderColor, {bool isSymbol = false}) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: bgColor.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: borderColor, width: 2),
+      ),
+      child: Center(
+        child: Text(
+          label,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: isSymbol ? size * 0.6 : size * 0.5,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
   Color _getOperatorColor() {
     switch (selectedTool) {
       case Tool.operatorAdd:
-        return Colors.green;
+        return const Color(0xFF4CAF50);
       case Tool.operatorSubtract:
-        return Colors.red;
+        return const Color(0xFFF44336);
       case Tool.operatorMultiply:
-        return Colors.orange;
+        return const Color(0xFFFF9800);
       case Tool.operatorDivide:
-        return Colors.teal;
+        return const Color(0xFF00BCD4);
       default:
         return Colors.grey;
     }

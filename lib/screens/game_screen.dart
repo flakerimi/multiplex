@@ -304,12 +304,18 @@ class GameScreen extends StatelessWidget {
                         ValueListenableBuilder<BeltDirection>(
                           valueListenable: game.inputManager.currentBeltDirectionNotifier,
                           builder: (context, beltDirection, child) {
-                            return Obx(() => CustomCursor(
-                              position: screenController.mousePosition.value,
-                              selectedTool: selectedTool,
-                              beltDirection: beltDirection,
-                              size: game.tileSize,
-                            ));
+                            return ValueListenableBuilder<BeltDirection>(
+                              valueListenable: game.inputManager.currentOperatorDirectionNotifier,
+                              builder: (context, operatorDirection, child) {
+                                return Obx(() => CustomCursor(
+                                  position: screenController.mousePosition.value,
+                                  selectedTool: selectedTool,
+                                  beltDirection: beltDirection,
+                                  operatorDirection: operatorDirection,
+                                  size: game.tileSize,
+                                ));
+                              },
+                            );
                           },
                         ),
                       ],
