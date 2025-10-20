@@ -15,6 +15,10 @@ class GameScreenController extends GetxController {
   final RxBool isLeftClickDragging = false.obs;
   final Rx<Offset?> lastLeftClickGridPos = Rx<Offset?>(null);
 
+  // Belt preview positions during drag
+  final RxList<Offset> beltPreviewPositions = <Offset>[].obs;
+  final Rx<BeltDirection?> beltPreviewDirection = Rx<BeltDirection?>(null);
+
   GameScreenController({required this.game});
 
   /// Snap mouse position to grid cell center with axis locking

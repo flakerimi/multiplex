@@ -133,10 +133,13 @@ class GameScreen extends StatelessWidget {
                   // Start drag for axis locking and direction detection
                   game.inputManager.startDrag(gridX, gridY);
 
-                  // Track last position (null means we haven't placed the start yet)
+                  // Clear preview and add start position
+                  screenController.beltPreviewPositions.clear();
+                  screenController.beltPreviewPositions.add(Offset(gridX.toDouble(), gridY.toDouble()));
+                  screenController.beltPreviewDirection.value = null;
                   screenController.lastLeftClickGridPos.value = null;
 
-                  // Don't place belt yet - wait for first movement to detect direction
+                  // Don't place belts yet - only show preview
                 }
               },
               onPointerMove: (event) {
@@ -161,17 +164,35 @@ class GameScreen extends StatelessWidget {
                     game.inputManager.handleTap(gridX, gridY, isRightClick: true);
                   }
                 }
-                // Handle left-click drag for belt placement
+                // Handle left-click drag for belt preview
                 else if ((event.buttons & 1) != 0 && selectedTool == Tool.belt) {
                   if (!screenController.isLeftClickDragging.value) {
                     screenController.isLeftClickDragging.value = true;
                     game.inputManager.startDrag(gridX, gridY);
                   }
 
-                  // Only place if we moved to a different grid cell
+                  // Only add to preview if we moved to a different grid cell
                   final lastPos = screenController.lastLeftClickGridPos.value;
-                  if (lastPos == null || lastPos.dx.toInt() != gridX || lastPos.dy.toInt() != gridY) {
-                    // On first movement (lastPos == null), detect direction and place both start and current
+
+                  // Lock to axis after direction is detected
+                  int lockedGridX = gridX;
+                  int lockedGridY = gridY;
+
+                  if (screenController.beltPreviewDirection.value != null) {
+                    final direction = screenController.beltPreviewDirection.value!;
+                    final startX = game.inputManager.dragStartGridX!;
+                    final startY = game.inputManager.dragStartGridY!;
+
+                    // Lock to the appropriate axis based on direction
+                    if (direction == BeltDirection.left || direction == BeltDirection.right) {
+                      lockedGridY = startY; // Lock Y axis for horizontal movement
+                    } else {
+                      lockedGridX = startX; // Lock X axis for vertical movement
+                    }
+                  }
+
+                  if (lastPos == null || lastPos.dx.toInt() != lockedGridX || lastPos.dy.toInt() != lockedGridY) {
+                    // On first movement, detect direction
                     if (lastPos == null && game.inputManager.dragStartGridX != null) {
                       final startX = game.inputManager.dragStartGridX!;
                       final startY = game.inputManager.dragStartGridY!;
@@ -182,35 +203,73 @@ class GameScreen extends StatelessWidget {
                       BeltDirection detectedDirection;
                       if (dx.abs() > dy.abs()) {
                         detectedDirection = dx > 0 ? BeltDirection.right : BeltDirection.left;
+                        lockedGridY = startY; // Lock Y immediately
                       } else {
                         detectedDirection = dy > 0 ? BeltDirection.down : BeltDirection.up;
+                        lockedGridX = startX; // Lock X immediately
                       }
 
-                      // Place start position with detected direction
-                      game.inputManager.handleTap(startX, startY, overrideDirection: detectedDirection);
+                      screenController.beltPreviewDirection.value = detectedDirection;
+                    }
 
-                      // Place current position with detected direction
-                      screenController.lastLeftClickGridPos.value = Offset(gridX.toDouble(), gridY.toDouble());
-                      game.inputManager.handleTap(gridX, gridY, overrideDirection: detectedDirection);
-                    } else {
-                      // Subsequent movements - normal placement
-                      screenController.lastLeftClickGridPos.value = Offset(gridX.toDouble(), gridY.toDouble());
-                      game.inputManager.handleTap(gridX, gridY);
+                    // Fill all tiles between last position and current position
+                    if (lastPos != null) {
+                      final lastX = lastPos.dx.toInt();
+                      final lastY = lastPos.dy.toInt();
+
+                      // Fill horizontal gap
+                      if (lockedGridX != lastX) {
+                        final startFill = lockedGridX < lastX ? lockedGridX : lastX;
+                        final endFill = lockedGridX > lastX ? lockedGridX : lastX;
+                        for (int x = startFill; x <= endFill; x++) {
+                          final fillPos = Offset(x.toDouble(), lockedGridY.toDouble());
+                          if (!screenController.beltPreviewPositions.contains(fillPos)) {
+                            screenController.beltPreviewPositions.add(fillPos);
+                          }
+                        }
+                      }
+
+                      // Fill vertical gap
+                      if (lockedGridY != lastY) {
+                        final startFill = lockedGridY < lastY ? lockedGridY : lastY;
+                        final endFill = lockedGridY > lastY ? lockedGridY : lastY;
+                        for (int y = startFill; y <= endFill; y++) {
+                          final fillPos = Offset(lockedGridX.toDouble(), y.toDouble());
+                          if (!screenController.beltPreviewPositions.contains(fillPos)) {
+                            screenController.beltPreviewPositions.add(fillPos);
+                          }
+                        }
+                      }
+                    }
+
+                    // Add current position to preview
+                    screenController.lastLeftClickGridPos.value = Offset(lockedGridX.toDouble(), lockedGridY.toDouble());
+                    final previewPos = Offset(lockedGridX.toDouble(), lockedGridY.toDouble());
+                    if (!screenController.beltPreviewPositions.contains(previewPos)) {
+                      screenController.beltPreviewPositions.add(previewPos);
                     }
                   }
                 }
               },
               onPointerUp: (event) {
-                // Handle single click for belt tool (click without drag)
+                // Place all preview belts with correct direction
                 if (screenController.isLeftClickDragging.value &&
                     selectedTool == Tool.belt &&
-                    screenController.lastLeftClickGridPos.value == null &&
-                    game.inputManager.dragStartGridX != null) {
-                  // User clicked but didn't drag - place single belt with current direction
-                  game.inputManager.handleTap(
-                    game.inputManager.dragStartGridX!,
-                    game.inputManager.dragStartGridY!,
-                  );
+                    screenController.beltPreviewPositions.isNotEmpty) {
+                  final direction = screenController.beltPreviewDirection.value;
+
+                  // Place all belts at once with the detected direction
+                  for (final pos in screenController.beltPreviewPositions) {
+                    game.inputManager.handleTap(
+                      pos.dx.toInt(),
+                      pos.dy.toInt(),
+                      overrideDirection: direction,
+                    );
+                  }
+
+                  // Clear preview
+                  screenController.beltPreviewPositions.clear();
+                  screenController.beltPreviewDirection.value = null;
                 }
 
                 screenController.isRightClickDragging.value = false;
@@ -220,6 +279,10 @@ class GameScreen extends StatelessWidget {
                 game.inputManager.endDrag();
               },
               onPointerCancel: (event) {
+                // Clear preview on cancel
+                screenController.beltPreviewPositions.clear();
+                screenController.beltPreviewDirection.value = null;
+
                 screenController.isRightClickDragging.value = false;
                 screenController.lastRightClickGridPos.value = null;
                 screenController.isLeftClickDragging.value = false;
@@ -237,6 +300,20 @@ class GameScreen extends StatelessWidget {
                       child: Stack(
                         children: [
                           GameWidget(game: game),
+                        // Belt preview overlay
+                        Obx(() {
+                          if (screenController.beltPreviewPositions.isEmpty) {
+                            return const SizedBox.shrink();
+                          }
+                          return CustomPaint(
+                            size: Size.infinite,
+                            painter: BeltPreviewPainter(
+                              previewPositions: screenController.beltPreviewPositions,
+                              tileSize: game.tileSize,
+                              gridOffset: game.gridOffset,
+                            ),
+                          );
+                        }),
                         // Custom cursor overlay - only show over game area
                         ValueListenableBuilder<BeltDirection>(
                           valueListenable: game.inputManager.currentBeltDirectionNotifier,
@@ -427,5 +504,53 @@ class GameScreen extends StatelessWidget {
         snackPosition: SnackPosition.BOTTOM,
       );
     }
+  }
+}
+
+/// Custom painter for belt preview overlay during drag
+class BeltPreviewPainter extends CustomPainter {
+  final List<Offset> previewPositions;
+  final double tileSize;
+  final Vector2 gridOffset;
+
+  BeltPreviewPainter({
+    required this.previewPositions,
+    required this.tileSize,
+    required this.gridOffset,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (previewPositions.isEmpty) return;
+
+    // Semi-transparent blue for preview tiles
+    final paint = Paint()
+      ..color = const Color(0xFF6C5CE7).withValues(alpha: 0.4)
+      ..style = PaintingStyle.fill;
+
+    // Border paint for preview tiles
+    final borderPaint = Paint()
+      ..color = const Color(0xFF6C5CE7).withValues(alpha: 0.8)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+
+    for (final gridPos in previewPositions) {
+      // Convert grid position to screen position
+      final screenX = gridPos.dx * tileSize - gridOffset.x;
+      final screenY = gridPos.dy * tileSize - gridOffset.y;
+
+      final rect = Rect.fromLTWH(screenX, screenY, tileSize, tileSize);
+
+      // Draw filled rectangle
+      canvas.drawRect(rect, paint);
+
+      // Draw border
+      canvas.drawRect(rect, borderPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(BeltPreviewPainter oldDelegate) {
+    return previewPositions != oldDelegate.previewPositions;
   }
 }
