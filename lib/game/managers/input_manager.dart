@@ -23,6 +23,10 @@ class InputManager {
   int? _dragStartGridX;
   int? _dragStartGridY;
 
+  // Expose drag start position for external access
+  int? get dragStartGridX => _dragStartGridX;
+  int? get dragStartGridY => _dragStartGridY;
+
   // Getters for backward compatibility
   Tool get selectedTool => selectedToolNotifier.value;
   set selectedTool(Tool value) => selectedToolNotifier.value = value;

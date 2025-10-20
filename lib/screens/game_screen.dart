@@ -130,14 +130,13 @@ class GameScreen extends StatelessWidget {
                 else if ((event.buttons & 1) != 0 && selectedTool == Tool.belt) {
                   screenController.isLeftClickDragging.value = true;
 
-                  // Start drag for axis locking
+                  // Start drag for axis locking and direction detection
                   game.inputManager.startDrag(gridX, gridY);
 
-                  // Track last position
-                  screenController.lastLeftClickGridPos.value = Offset(gridX.toDouble(), gridY.toDouble());
+                  // Track last position (null means we haven't placed the start yet)
+                  screenController.lastLeftClickGridPos.value = null;
 
-                  // Place belt at start position
-                  game.inputManager.handleTap(gridX, gridY);
+                  // Don't place belt yet - wait for first movement to detect direction
                 }
               },
               onPointerMove: (event) {
@@ -172,12 +171,33 @@ class GameScreen extends StatelessWidget {
                   // Only place if we moved to a different grid cell
                   final lastPos = screenController.lastLeftClickGridPos.value;
                   if (lastPos == null || lastPos.dx.toInt() != gridX || lastPos.dy.toInt() != gridY) {
+                    // On first movement (lastPos == null), place belt at start position first
+                    if (lastPos == null && game.inputManager.dragStartGridX != null) {
+                      game.inputManager.handleTap(
+                        game.inputManager.dragStartGridX!,
+                        game.inputManager.dragStartGridY!,
+                      );
+                    }
+
+                    // Then place belt at current position
                     screenController.lastLeftClickGridPos.value = Offset(gridX.toDouble(), gridY.toDouble());
                     game.inputManager.handleTap(gridX, gridY);
                   }
                 }
               },
               onPointerUp: (event) {
+                // Handle single click for belt tool (click without drag)
+                if (screenController.isLeftClickDragging.value &&
+                    selectedTool == Tool.belt &&
+                    screenController.lastLeftClickGridPos.value == null &&
+                    game.inputManager.dragStartGridX != null) {
+                  // User clicked but didn't drag - place single belt with current direction
+                  game.inputManager.handleTap(
+                    game.inputManager.dragStartGridX!,
+                    game.inputManager.dragStartGridY!,
+                  );
+                }
+
                 screenController.isRightClickDragging.value = false;
                 screenController.lastRightClickGridPos.value = null;
                 screenController.isLeftClickDragging.value = false;
