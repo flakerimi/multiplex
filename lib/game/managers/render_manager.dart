@@ -188,6 +188,11 @@ class RenderManager {
     final screenX = x * tileSize - gridOffset.x;
     final screenY = y * tileSize - gridOffset.y;
 
+    // Skip operator reference tiles - they're drawn by _drawOperatorLayout
+    if (tile.type == TileType.operator && !tile.isOrigin) {
+      return;
+    }
+
     // Draw shadow first for depth
     if (tile.type != TileType.empty) {
       final shadowPaint = Paint()
@@ -249,34 +254,38 @@ class RenderManager {
     final gridOffset = getGridOffset();
     final isHorizontal = tile.width == 3;
 
-    // Get operator colors
+    // Get operator colors - one color per operator type
     Color operatorColor;
     String symbol;
     switch (tile.operatorType!) {
       case OperatorType.add:
-        operatorColor = const Color(0xFF4CAF50);
+        operatorColor = const Color(0xFF4CAF50); // Green
         symbol = '+';
         break;
       case OperatorType.subtract:
-        operatorColor = const Color(0xFFF44336);
+        operatorColor = const Color(0xFFF44336); // Red
         symbol = '-';
         break;
       case OperatorType.multiply:
-        operatorColor = const Color(0xFFFF9800);
+        operatorColor = const Color(0xFF9C27B0); // Purple
         symbol = '×';
         break;
       case OperatorType.divide:
-        operatorColor = const Color(0xFF00BCD4);
+        operatorColor = const Color(0xFF00BCD4); // Cyan
         symbol = '÷';
         break;
     }
+
+    // Use slightly darker/lighter shades for A and B sections
+    final lightColor = Color.lerp(operatorColor, Colors.white, 0.3)!;
+    final darkColor = Color.lerp(operatorColor, Colors.black, 0.2)!;
 
     if (isHorizontal) {
       // Horizontal layout: | A | + | B |
       // Draw left tile (input A)
       final leftX = (x - 1) * tileSize - gridOffset.x;
       final leftY = y * tileSize - gridOffset.y;
-      _drawOperatorSection(canvas, leftX, leftY, 'A', Colors.blue[300]!, operatorColor);
+      _drawOperatorSection(canvas, leftX, leftY, 'A', lightColor, operatorColor);
 
       // Draw center tile (operator symbol)
       final centerX = x * tileSize - gridOffset.x;
@@ -286,7 +295,7 @@ class RenderManager {
       // Draw right tile (input B)
       final rightX = (x + 1) * tileSize - gridOffset.x;
       final rightY = y * tileSize - gridOffset.y;
-      _drawOperatorSection(canvas, rightX, rightY, 'B', Colors.purple[300]!, operatorColor);
+      _drawOperatorSection(canvas, rightX, rightY, 'B', darkColor, operatorColor);
 
       // Draw output number if present
       if (tile.carryingNumber != null) {
@@ -297,7 +306,7 @@ class RenderManager {
       // Draw top tile (input A)
       final topX = x * tileSize - gridOffset.x;
       final topY = (y - 1) * tileSize - gridOffset.y;
-      _drawOperatorSection(canvas, topX, topY, 'A', Colors.blue[300]!, operatorColor);
+      _drawOperatorSection(canvas, topX, topY, 'A', lightColor, operatorColor);
 
       // Draw center tile (operator symbol)
       final centerX = x * tileSize - gridOffset.x;
@@ -307,7 +316,7 @@ class RenderManager {
       // Draw bottom tile (input B)
       final bottomX = x * tileSize - gridOffset.x;
       final bottomY = (y + 1) * tileSize - gridOffset.y;
-      _drawOperatorSection(canvas, bottomX, bottomY, 'B', Colors.purple[300]!, operatorColor);
+      _drawOperatorSection(canvas, bottomX, bottomY, 'B', darkColor, operatorColor);
 
       // Draw output number if present
       if (tile.carryingNumber != null) {
