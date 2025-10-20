@@ -91,18 +91,34 @@ class InputManager {
       return;
     }
 
-    // Apply axis locking for belt tool during drag
+    // Auto-detect belt direction based on drag direction
     int finalGridX = gridX;
     int finalGridY = gridY;
+    BeltDirection directionToUse = currentBeltDirection;
 
     if (!isRightClick && selectedTool == Tool.belt && _dragStartGridX != null && _dragStartGridY != null) {
-      // For horizontal belts (left/right), lock Y coordinate
-      if (currentBeltDirection == BeltDirection.left || currentBeltDirection == BeltDirection.right) {
-        finalGridY = _dragStartGridY!;
-      }
-      // For vertical belts (up/down), lock X coordinate
-      else {
-        finalGridX = _dragStartGridX!;
+      final dx = gridX - _dragStartGridX!;
+      final dy = gridY - _dragStartGridY!;
+
+      // Determine direction based on drag vector
+      if (dx.abs() > dy.abs()) {
+        // More horizontal movement
+        if (dx > 0) {
+          directionToUse = BeltDirection.right;
+          finalGridY = _dragStartGridY!; // Lock Y axis
+        } else if (dx < 0) {
+          directionToUse = BeltDirection.left;
+          finalGridY = _dragStartGridY!; // Lock Y axis
+        }
+      } else {
+        // More vertical movement
+        if (dy > 0) {
+          directionToUse = BeltDirection.down;
+          finalGridX = _dragStartGridX!; // Lock X axis
+        } else if (dy < 0) {
+          directionToUse = BeltDirection.up;
+          finalGridX = _dragStartGridX!; // Lock X axis
+        }
       }
     }
 
@@ -129,7 +145,7 @@ class InputManager {
       case Tool.belt:
         // Can only place belt on empty tiles
         if (existingTile.type == TileType.empty) {
-          tileManager.placeBelt(finalGridX, finalGridY, currentBeltDirection);
+          tileManager.placeBelt(finalGridX, finalGridY, directionToUse);
           onBeltPlaced?.call();
         }
         break;
