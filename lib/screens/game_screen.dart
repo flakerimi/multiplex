@@ -171,17 +171,32 @@ class GameScreen extends StatelessWidget {
                   // Only place if we moved to a different grid cell
                   final lastPos = screenController.lastLeftClickGridPos.value;
                   if (lastPos == null || lastPos.dx.toInt() != gridX || lastPos.dy.toInt() != gridY) {
-                    // On first movement (lastPos == null), place belt at start position first
+                    // On first movement (lastPos == null), detect direction and place both start and current
                     if (lastPos == null && game.inputManager.dragStartGridX != null) {
-                      game.inputManager.handleTap(
-                        game.inputManager.dragStartGridX!,
-                        game.inputManager.dragStartGridY!,
-                      );
-                    }
+                      final startX = game.inputManager.dragStartGridX!;
+                      final startY = game.inputManager.dragStartGridY!;
+                      final dx = gridX - startX;
+                      final dy = gridY - startY;
 
-                    // Then place belt at current position
-                    screenController.lastLeftClickGridPos.value = Offset(gridX.toDouble(), gridY.toDouble());
-                    game.inputManager.handleTap(gridX, gridY);
+                      // Detect direction from drag vector
+                      BeltDirection detectedDirection;
+                      if (dx.abs() > dy.abs()) {
+                        detectedDirection = dx > 0 ? BeltDirection.right : BeltDirection.left;
+                      } else {
+                        detectedDirection = dy > 0 ? BeltDirection.down : BeltDirection.up;
+                      }
+
+                      // Place start position with detected direction
+                      game.inputManager.handleTap(startX, startY, overrideDirection: detectedDirection);
+
+                      // Place current position with detected direction
+                      screenController.lastLeftClickGridPos.value = Offset(gridX.toDouble(), gridY.toDouble());
+                      game.inputManager.handleTap(gridX, gridY, overrideDirection: detectedDirection);
+                    } else {
+                      // Subsequent movements - normal placement
+                      screenController.lastLeftClickGridPos.value = Offset(gridX.toDouble(), gridY.toDouble());
+                      game.inputManager.handleTap(gridX, gridY);
+                    }
                   }
                 }
               },

@@ -87,7 +87,7 @@ class InputManager {
     _dragStartGridY = null;
   }
 
-  void handleTap(int gridX, int gridY, {bool isRightClick = false}) {
+  void handleTap(int gridX, int gridY, {bool isRightClick = false, BeltDirection? overrideDirection}) {
     // Don't place tiles if panning or zooming
     if (pressedKeys.contains(LogicalKeyboardKey.space) ||
         pressedKeys.contains(LogicalKeyboardKey.shiftLeft) ||
@@ -98,30 +98,32 @@ class InputManager {
     // Auto-detect belt direction based on drag direction
     int finalGridX = gridX;
     int finalGridY = gridY;
-    BeltDirection directionToUse = currentBeltDirection;
+    BeltDirection directionToUse = overrideDirection ?? currentBeltDirection;
 
-    if (!isRightClick && selectedTool == Tool.belt && _dragStartGridX != null && _dragStartGridY != null) {
+    if (!isRightClick && selectedTool == Tool.belt && _dragStartGridX != null && _dragStartGridY != null && overrideDirection == null) {
       final dx = gridX - _dragStartGridX!;
       final dy = gridY - _dragStartGridY!;
 
-      // Determine direction based on drag vector
-      if (dx.abs() > dy.abs()) {
-        // More horizontal movement
-        if (dx > 0) {
-          directionToUse = BeltDirection.right;
-          finalGridY = _dragStartGridY!; // Lock Y axis
-        } else if (dx < 0) {
-          directionToUse = BeltDirection.left;
-          finalGridY = _dragStartGridY!; // Lock Y axis
-        }
-      } else {
-        // More vertical movement
-        if (dy > 0) {
-          directionToUse = BeltDirection.down;
-          finalGridX = _dragStartGridX!; // Lock X axis
-        } else if (dy < 0) {
-          directionToUse = BeltDirection.up;
-          finalGridX = _dragStartGridX!; // Lock X axis
+      // Determine direction based on drag vector (only if there's actual movement)
+      if (dx.abs() > 0 || dy.abs() > 0) {
+        if (dx.abs() > dy.abs()) {
+          // More horizontal movement
+          if (dx > 0) {
+            directionToUse = BeltDirection.right;
+            finalGridY = _dragStartGridY!; // Lock Y axis
+          } else if (dx < 0) {
+            directionToUse = BeltDirection.left;
+            finalGridY = _dragStartGridY!; // Lock Y axis
+          }
+        } else {
+          // More vertical movement
+          if (dy > 0) {
+            directionToUse = BeltDirection.down;
+            finalGridX = _dragStartGridX!; // Lock X axis
+          } else if (dy < 0) {
+            directionToUse = BeltDirection.up;
+            finalGridX = _dragStartGridX!; // Lock X axis
+          }
         }
       }
     }
